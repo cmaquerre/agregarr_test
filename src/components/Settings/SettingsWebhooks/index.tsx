@@ -122,7 +122,6 @@ const TriggerSection: React.FC<{
               className="sr-only"
             />
             <div
-              onClick={() => onChange({ ...config, enabled: !config.enabled })}
               className={`h-6 w-11 cursor-pointer rounded-full transition-colors ${
                 config.enabled ? 'bg-indigo-600' : 'bg-stone-600'
               }`}
