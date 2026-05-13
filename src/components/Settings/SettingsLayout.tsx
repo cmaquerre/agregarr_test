@@ -12,6 +12,7 @@ const messages = defineMessages({
   menuWebhooks: 'Webhooks',
   menuLanguageTags: 'Language Tags',
   menuMediaFolders: 'Media Folders',
+  menuTags: 'Tags',
   menuLogs: 'Logs',
   menuJobs: 'Jobs',
   menuAbout: 'About',
@@ -59,6 +60,11 @@ const SettingsLayout = ({ children }: SettingsLayoutProps) => {
       text: intl.formatMessage(messages.menuMediaFolders),
       route: '/settings/media-folders',
       regex: /^\/settings\/media-folders/,
+    },
+    {
+      text: intl.formatMessage(messages.menuTags),
+      route: '/settings/tags',
+      regex: /^\/settings\/tags/,
     },
     {
       text: intl.formatMessage(messages.menuLogs),

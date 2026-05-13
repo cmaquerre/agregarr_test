@@ -1196,8 +1196,14 @@ class Settings {
 
     if (data) {
       this.data = merge(this.data, JSON.parse(data));
-      this.save();
     }
+
+    // Ensure webhookToken is always present (belt-and-suspenders alongside the getter)
+    if (!this.data.main.webhookToken) {
+      this.data.main.webhookToken = this.generateApiKey();
+    }
+
+    this.save();
     return this;
   }
 

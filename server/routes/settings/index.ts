@@ -1601,6 +1601,81 @@ settingsRoutes.post('/media-folders', (req, res) => {
   return res.status(200).json(settings.mediaFolders);
 });
 
+// Tags overview: language tags + Radarr/Sonarr tags per movie/series
+settingsRoutes.get('/tags-overview', async (_req, res, next) => {
+  try {
+    const { getRepository } = await import('@server/datasource');
+    const { LanguageTagRecord } = await import('@server/entity/LanguageTagRecord');
+    const RadarrAPI = (await import('@server/api/servarr/radarr')).default;
+    const SonarrAPI = (await import('@server/api/servarr/sonarr')).default;
+    const settings = getSettings();
+
+    const records = await getRepository(LanguageTagRecord).find({
+      order: { title: 'ASC' },
+    });
+
+    // Build tmdbId → radarr tag names map
+    const radarrTagsByTmdb = new Map<number, string[]>();
+    for (const radarrSettings of settings.radarr) {
+      if (!radarrSettings.hostname) continue;
+      try {
+        const radarr = new RadarrAPI({
+          apiKey: radarrSettings.apiKey,
+          url: RadarrAPI.buildUrl(radarrSettings, '/api/v3'),
+        });
+        const [movies, tags] = await Promise.all([radarr.getMovies(), radarr.getTags()]);
+        const tagMap = new Map(tags.map((t) => [t.id, t.label]));
+        for (const movie of movies) {
+          if (!movie.tmdbId || !movie.tags?.length) continue;
+          const names = movie.tags.map((id) => tagMap.get(id) ?? String(id)).filter(Boolean);
+          const existing = radarrTagsByTmdb.get(movie.tmdbId) ?? [];
+          radarrTagsByTmdb.set(movie.tmdbId, [...new Set([...existing, ...names])]);
+        }
+      } catch {
+        // skip failing instance
+      }
+    }
+
+    // Build tmdbId → sonarr tag names map
+    const sonarrTagsByTmdb = new Map<number, string[]>();
+    for (const sonarrSettings of settings.sonarr) {
+      if (!sonarrSettings.hostname) continue;
+      try {
+        const sonarr = new SonarrAPI({
+          apiKey: sonarrSettings.apiKey,
+          url: SonarrAPI.buildUrl(sonarrSettings, '/api/v3'),
+        });
+        const [series, tags] = await Promise.all([sonarr.getSeries(), sonarr.getTags()]);
+        const tagMap = new Map(tags.map((t) => [t.id, t.label]));
+        for (const show of series) {
+          if (!show.tmdbId || !show.tags?.length) continue;
+          const names = show.tags.map((id) => tagMap.get(id) ?? String(id)).filter(Boolean);
+          const existing = sonarrTagsByTmdb.get(show.tmdbId) ?? [];
+          sonarrTagsByTmdb.set(show.tmdbId, [...new Set([...existing, ...names])]);
+        }
+      } catch {
+        // skip failing instance
+      }
+    }
+
+    const items = records.map((r) => ({
+      ratingKey: r.ratingKey,
+      title: r.title,
+      mediaType: r.mediaType,
+      tmdbId: r.tmdbId ?? null,
+      languageTag: r.tag,
+      source: r.source ?? null,
+      radarrTags: r.tmdbId ? (radarrTagsByTmdb.get(r.tmdbId) ?? []) : [],
+      sonarrTags: r.tmdbId ? (sonarrTagsByTmdb.get(r.tmdbId) ?? []) : [],
+      updatedAt: r.updatedAt,
+    }));
+
+    return res.status(200).json({ items });
+  } catch (e) {
+    return next(e);
+  }
+});
+
 settingsRoutes.post('/export-debug', (req, res, next) => {
   try {
     const { includeDatabase, includeSettings, includeLogs } = req.body;

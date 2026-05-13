@@ -27,6 +27,9 @@ const messages = defineMessages({
   tokenRegenerated: 'Token regenerated — update your Radarr/Sonarr webhook URLs!',
   tokenInfo:
     'This token authenticates Radarr and Sonarr webhooks. Include it as a ?token= query parameter.',
+  tokenLabel: 'Webhook token',
+  noApplicationUrl:
+    'Application URL is not configured. Go to General settings and set the Application URL so webhook URLs can be built correctly.',
   queueTitle: 'Pending queue',
   queueEmpty: 'No items pending',
   queueItem: '{value} ({mediaType}) — {secondsRemaining}s remaining',
@@ -257,8 +260,8 @@ const SettingsWebhooks: React.FC = () => {
 
       {/* Token info */}
       <div className="rounded-lg border border-stone-700 bg-stone-800 p-4">
-        <div className="mb-2 flex items-center justify-between">
-          <p className="text-sm font-medium text-stone-300">
+        <div className="mb-3 flex items-start justify-between gap-4">
+          <p className="text-sm text-stone-400">
             {intl.formatMessage(messages.tokenInfo)}
           </p>
           <Button
@@ -271,8 +274,23 @@ const SettingsWebhooks: React.FC = () => {
             {intl.formatMessage(messages.regenerateToken)}
           </Button>
         </div>
-        <CopyableUrl url={token} />
+        <label className="mb-1 block text-xs font-medium text-stone-400">
+          {intl.formatMessage(messages.tokenLabel)}
+        </label>
+        {token ? (
+          <CopyableUrl url={token} />
+        ) : (
+          <p className="text-xs italic text-stone-500">
+            Token not yet generated — reload this page or restart the server.
+          </p>
+        )}
       </div>
+
+      {!baseUrl && (
+        <div className="rounded-lg border border-amber-700 bg-amber-900/30 px-4 py-3 text-sm text-amber-300">
+          {intl.formatMessage(messages.noApplicationUrl)}
+        </div>
+      )}
 
       <div className="grid gap-4 md:grid-cols-1 lg:grid-cols-3">
         <TriggerSection
