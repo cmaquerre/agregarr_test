@@ -44,6 +44,28 @@ export interface RadarrExclusion {
   movieYear: number;
 }
 
+export interface RadarrMovieFileMediaInfo {
+  audioLanguages: string; // e.g. "French / English"
+  audioChannels: number;
+  audioCodec: string;
+  audioStreamCount?: number;
+  videoCodec?: string;
+}
+
+export interface RadarrMovieFile {
+  id: number;
+  movieId: number;
+  relativePath: string;
+  path: string;
+  size: number;
+  dateAdded: string;
+  quality?: {
+    quality: { id: number; name: string };
+    revision: { version: number; real: number };
+  };
+  mediaInfo?: RadarrMovieFileMediaInfo;
+}
+
 export type ApplyTagsMode = 'add' | 'remove' | 'replace';
 
 export interface RadarrBulkEditOptions {
@@ -243,6 +265,39 @@ class RadarrAPI extends ServarrBase<{ movieId: number }> {
         tagIds,
       });
       throw new Error(`[Radarr] Failed to bulk add tags: ${e.message}`);
+    }
+  }
+
+  public async getMovieFilesByMovieId(movieId: number): Promise<RadarrMovieFile[]> {
+    try {
+      const response = await this.axios.get<RadarrMovieFile[]>('/moviefile', {
+        params: { movieId },
+      });
+      return response.data;
+    } catch (e) {
+      logger.error('Error retrieving movie files from Radarr', {
+        label: 'Radarr API',
+        errorMessage: e.message,
+        movieId,
+      });
+      return [];
+    }
+  }
+
+  public async getMoviesFilteredByTmdbId(tmdbId: number): Promise<RadarrMovie[]> {
+    try {
+      const response = await this.axios.get<RadarrMovie[]>('/movie', {
+        params: { tmdbId },
+      });
+      return Array.isArray(response.data) ? response.data : [];
+    } catch {
+      // Fallback: fetch all and filter client-side
+      try {
+        const all = await this.getMovies();
+        return all.filter((m) => m.tmdbId === tmdbId);
+      } catch {
+        return [];
+      }
     }
   }
 

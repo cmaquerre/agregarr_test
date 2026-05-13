@@ -1083,6 +1083,92 @@ class PlexBasePosterManager {
   }
 
   /**
+   * Get poster buffer for a specific season.
+   * For TMDB/local sources: fetches season-specific artwork from TMDB then falls back to Plex.
+   * For Plex source: downloads the current Plex season poster directly.
+   */
+  async getSeasonPosterBuffer(
+    plexApi: PlexAPI,
+    showTmdbId: number,
+    seasonNumber: number,
+    seasonRatingKey: string,
+    language: string,
+    posterSource: 'tmdb' | 'plex' | 'local' = 'tmdb',
+    plexThumb?: string
+  ): Promise<Buffer | null> {
+    if (posterSource === 'plex') {
+      // Use current Plex season poster directly
+      try {
+        const thumb =
+          plexThumb ||
+          ((await plexApi.getMetadata(seasonRatingKey)) as { thumb?: string })
+            .thumb;
+        if (thumb) {
+          return await this.downloadFromPlex(plexApi, thumb, seasonRatingKey);
+        }
+      } catch (error) {
+        logger.warn('Failed to download Plex season poster', {
+          label: 'PlexBasePosterManager',
+          seasonRatingKey,
+          error: error instanceof Error ? error.message : String(error),
+        });
+      }
+      return null;
+    }
+
+    // TMDB or local source: try TMDB season-specific poster first
+    try {
+      const TheMovieDb = (await import('@server/api/themoviedb')).default;
+      const tmdbClient = new TheMovieDb();
+
+      const seasonData = await tmdbClient.getTvSeason({
+        tvId: showTmdbId,
+        seasonNumber,
+        language,
+      });
+
+      if (seasonData.poster_path) {
+        const posterUrl = `https://image.tmdb.org/t/p/original${seasonData.poster_path}`;
+
+        const cached = await this.getTmdbCachedPoster(posterUrl);
+        if (cached) {
+          return cached;
+        }
+
+        const buffer = await this.downloadFromTMDB(posterUrl);
+        await this.storeTmdbCachedPoster(posterUrl, buffer);
+        return buffer;
+      }
+    } catch (error) {
+      logger.debug('No TMDB season poster available, falling back to Plex', {
+        label: 'PlexBasePosterManager',
+        showTmdbId,
+        seasonNumber,
+        error: error instanceof Error ? error.message : String(error),
+      });
+    }
+
+    // Fallback: current Plex season poster
+    try {
+      const thumb =
+        plexThumb ||
+        ((await plexApi.getMetadata(seasonRatingKey)) as { thumb?: string })
+          .thumb;
+      if (thumb) {
+        return await this.downloadFromPlex(plexApi, thumb, seasonRatingKey);
+      }
+    } catch (error) {
+      logger.warn('Failed to download Plex season poster fallback', {
+        label: 'PlexBasePosterManager',
+        seasonRatingKey,
+        error: error instanceof Error ? error.message : String(error),
+      });
+    }
+
+    return null;
+  }
+
+  /**
    * Move orphaned posters to orphaned subfolder
    * Called during bulk download to clean up old files from Plex Dance
    */

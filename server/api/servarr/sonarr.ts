@@ -57,6 +57,11 @@ export interface EpisodeFile {
       name: string;
     };
   };
+  mediaInfo?: {
+    audioLanguages: string; // e.g. "French / English"
+    audioChannels?: number;
+    audioCodec?: string;
+  };
 }
 
 export interface SonarrSeries {
@@ -100,6 +105,7 @@ export interface SonarrSeries {
   };
   qualityProfileId: number;
   id?: number;
+  tmdbId?: number;
   rootFolderPath?: string;
   addOptions?: {
     ignoreEpisodesWithFiles?: boolean;
@@ -373,6 +379,31 @@ class SonarrAPI extends ServarrBase<{
         response: e?.response?.data,
       });
       throw new Error('Failed to add series');
+    }
+  }
+
+  public async getEpisodeFilesBySeries(seriesId: number): Promise<EpisodeFile[]> {
+    try {
+      const response = await this.axios.get<EpisodeFile[]>('/episodefile', {
+        params: { seriesId },
+      });
+      return Array.isArray(response.data) ? response.data : [];
+    } catch (e) {
+      logger.error('Error retrieving episode files from Sonarr', {
+        label: 'Sonarr API',
+        errorMessage: e.message,
+        seriesId,
+      });
+      return [];
+    }
+  }
+
+  public async getSeriesByTmdbId(tmdbId: number): Promise<SonarrSeries | null> {
+    try {
+      const all = await this.getSeries();
+      return all.find((s) => s.tmdbId === tmdbId) ?? null;
+    } catch {
+      return null;
     }
   }
 

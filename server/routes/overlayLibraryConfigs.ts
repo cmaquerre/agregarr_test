@@ -113,7 +113,7 @@ router.post('/:libraryId', async (req, res, next) => {
     }
 
     const { libraryId } = req.params;
-    const { libraryName, mediaType, enabledOverlays, tmdbLanguage } = req.body;
+    const { libraryName, mediaType, enabledOverlays, tmdbLanguage, applyToSeasons } = req.body;
 
     if (!libraryName || !mediaType) {
       return res.status(400).json({
@@ -145,6 +145,7 @@ router.post('/:libraryId', async (req, res, next) => {
       config.mediaType = mediaType;
       config.enabledOverlays = enabledOverlays;
       config.tmdbLanguage = tmdbLanguage || undefined;
+      config.applyToSeasons = mediaType === 'show' ? (applyToSeasons ?? false) : false;
     } else {
       // Create new
       config = new OverlayLibraryConfig({
@@ -153,6 +154,7 @@ router.post('/:libraryId', async (req, res, next) => {
         mediaType,
         enabledOverlays,
         tmdbLanguage: tmdbLanguage || undefined,
+        applyToSeasons: mediaType === 'show' ? (applyToSeasons ?? false) : false,
       });
     }
 

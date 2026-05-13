@@ -160,6 +160,9 @@ const messages = defineMessages({
   tmdbPosterLanguage: 'TMDB Poster Language:',
   useGlobalSetting: 'Use global setting',
   languageDescription: 'Language for fetching poster metadata from TMDB',
+  applyToSeasons: 'Apply overlays to season posters',
+  applyToSeasonsDescription:
+    'Also apply overlays to individual season posters using TMDB season artwork',
 });
 
 interface Template {
@@ -189,6 +192,7 @@ interface LibraryConfig {
   mediaType: 'movie' | 'show';
   enabledOverlays: EnabledOverlay[];
   tmdbLanguage?: string;
+  applyToSeasons?: boolean;
 }
 
 interface LibraryDetailConfigViewProps {
@@ -333,6 +337,7 @@ const LibraryDetailConfigView: React.FC<LibraryDetailConfigViewProps> = ({
   const [tmdbLanguage, setTmdbLanguage] = useState<string | undefined>(
     undefined
   );
+  const [applyToSeasons, setApplyToSeasons] = useState(false);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [previewLoading, setPreviewLoading] = useState(false);
   const previewDebounceRef = useRef<NodeJS.Timeout | null>(null);
@@ -388,6 +393,7 @@ const LibraryDetailConfigView: React.FC<LibraryDetailConfigViewProps> = ({
     if (configData?.tmdbLanguage !== undefined) {
       setTmdbLanguage(configData.tmdbLanguage);
     }
+    setApplyToSeasons(configData?.applyToSeasons ?? false);
   }, [configData]);
 
   // Fetch combined preview when enabled overlays change
@@ -577,6 +583,7 @@ const LibraryDetailConfigView: React.FC<LibraryDetailConfigViewProps> = ({
             mediaType: configData?.mediaType || libraryType,
             enabledOverlays,
             tmdbLanguage: tmdbLanguage || undefined,
+            applyToSeasons: libraryType === 'show' ? applyToSeasons : false,
           }),
         }
       );
@@ -690,6 +697,26 @@ const LibraryDetailConfigView: React.FC<LibraryDetailConfigViewProps> = ({
               </DndContext>
             </div>
           </div>
+
+          {/* Apply to seasons toggle - only for show libraries */}
+          {libraryType === 'show' && (
+            <div className="mt-4 border-t border-stone-700 pt-4">
+              <label className="flex cursor-pointer items-center gap-3">
+                <input
+                  type="checkbox"
+                  checked={applyToSeasons}
+                  onChange={(e) => setApplyToSeasons(e.target.checked)}
+                  className="h-4 w-4 rounded border-stone-500 bg-stone-700 text-indigo-500 focus:ring-indigo-500"
+                />
+                <span className="text-sm font-medium text-white">
+                  {intl.formatMessage(messages.applyToSeasons)}
+                </span>
+                <span className="text-xs text-stone-400">
+                  {intl.formatMessage(messages.applyToSeasonsDescription)}
+                </span>
+              </label>
+            </div>
+          )}
 
           {/* TMDB Language Setting - Footer Area - Only show if TMDB is the poster source */}
           {overlaySettings?.defaultPosterSource === 'tmdb' && (

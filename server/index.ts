@@ -7,6 +7,8 @@ import { getSettings } from '@server/lib/settings';
 import logger from '@server/logger';
 import routes from '@server/routes';
 import plexWebhookRoute from '@server/routes/plex-webhook';
+import radarrWebhookRoute from '@server/routes/radarr-webhook';
+import sonarrWebhookRoute from '@server/routes/sonarr-webhook';
 import { sanitizeErrorMessage } from '@server/utils/errorResponse';
 import restartFlag from '@server/utils/restartFlag';
 // imageproxy removed - not needed for collections-only app
@@ -238,8 +240,10 @@ app
         next();
       }
     });
-    // Plex webhook — must be before CSRF and OpenAPI validator (unauthenticated, multipart)
+    // Webhook routes — must be before CSRF (unauthenticated, from external services)
     server.use('/plex-webhook', plexWebhookRoute);
+    server.use('/radarr-webhook', radarrWebhookRoute);
+    server.use('/sonarr-webhook', sonarrWebhookRoute);
 
     if (settings.main.csrfProtection) {
       server.use(

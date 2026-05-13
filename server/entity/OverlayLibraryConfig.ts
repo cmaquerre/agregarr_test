@@ -42,6 +42,9 @@ export class OverlayLibraryConfig {
   @Column({ type: 'varchar', nullable: true })
   public tmdbLanguage?: string; // ISO language code for TMDB poster metadata (e.g., 'en', 'fr', 'pt-BR')
 
+  @Column({ type: 'boolean', nullable: true, default: false })
+  public applyToSeasons?: boolean; // When true, overlays are also applied to season posters
+
   @CreateDateColumn()
   public createdAt: Date;
 

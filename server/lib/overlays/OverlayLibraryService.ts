@@ -1,5 +1,5 @@
 import type { MaintainerrCollection } from '@server/api/maintainerr';
-import type { PlexLibraryItem } from '@server/api/plexapi';
+import type { PlexLibraryItem, PlexMetadata } from '@server/api/plexapi';
 import PlexAPI from '@server/api/plexapi';
 import type { RadarrMovie } from '@server/api/servarr/radarr';
 import type { SonarrSeries } from '@server/api/servarr/sonarr';
@@ -378,6 +378,8 @@ class OverlayLibraryService {
         itemCount: allItems.length,
       });
 
+      const applyToSeasons = config.applyToSeasons ?? false;
+
       // Process each item
       let successCount = 0;
       let errorCount = 0;
@@ -419,7 +421,9 @@ class OverlayLibraryService {
             sortedTemplates,
             config.mediaType,
             libraryId,
-            config.libraryName
+            config.libraryName,
+            undefined,
+            applyToSeasons
           );
           successCount++;
         } catch (error) {
@@ -639,7 +643,8 @@ class OverlayLibraryService {
     configuredLibraryType: 'movie' | 'show',
     libraryId: string,
     libraryName: string,
-    contextOverrides?: Partial<OverlayRenderContext>
+    contextOverrides?: Partial<OverlayRenderContext>,
+    applyToSeasons?: boolean
   ): Promise<void> {
     try {
       // CRITICAL: Derive actual media type from item.type, not library config
@@ -1159,6 +1164,18 @@ class OverlayLibraryService {
           // Ignore cleanup errors
         });
       }
+
+      // Apply overlays to seasons when requested for show-type items
+      if (applyToSeasons && item.type === 'show' && tmdbId) {
+        await this.applyOverlaysToShowSeasons(
+          plexApi,
+          item,
+          context,
+          templates,
+          libraryId,
+          tmdbId
+        );
+      }
     } catch (error) {
       logger.error('Failed to apply overlays to item', {
         label: 'OverlayLibrary',
@@ -1168,6 +1185,244 @@ class OverlayLibraryService {
         errorDetails: error,
       });
       throw error;
+    }
+  }
+
+  /**
+   * Apply overlays to all seasons of a show.
+   * Uses the show's context as base so ratings and other metadata are inherited.
+   * Season poster is fetched from TMDB (season-specific) with fallback to Plex.
+   */
+  private async applyOverlaysToShowSeasons(
+    plexApi: PlexAPI,
+    showItem: PlexLibraryItem,
+    showContext: OverlayRenderContext,
+    templates: OverlayTemplate[],
+    libraryId: string,
+    showTmdbId: number
+  ): Promise<void> {
+    let seasons: PlexMetadata[];
+
+    try {
+      seasons = await plexApi.getChildrenMetadata(showItem.ratingKey);
+    } catch (error) {
+      logger.warn('Failed to fetch seasons for show', {
+        label: 'OverlayLibrary',
+        showTitle: showItem.title,
+        error: error instanceof Error ? error.message : String(error),
+      });
+      return;
+    }
+
+    const actualSeasons = seasons.filter((s) => s.type === 'season');
+
+    logger.info('Applying overlays to show seasons', {
+      label: 'OverlayLibrary',
+      showTitle: showItem.title,
+      seasonCount: actualSeasons.length,
+    });
+
+    const { getTmdbLanguage } = await import('@server/lib/settings');
+    const language = await getTmdbLanguage(libraryId);
+    const metadataService = (
+      await import('@server/lib/metadata/MetadataTrackingService')
+    ).default;
+    const { plexBasePosterManager } = await import(
+      '@server/lib/overlays/PlexBasePosterManager'
+    );
+
+    for (const season of actualSeasons) {
+      try {
+        const seasonNumber = season.index ?? 0;
+        const seasonRatingKey = season.ratingKey;
+
+        // Build season-specific context inheriting from parent show
+        const seasonContext: OverlayRenderContext = {
+          ...showContext,
+          seasonNumber,
+        };
+
+        // Filter templates by conditions using the season context
+        const matchingTemplates = templates.filter((template) => {
+          const condition = template.getApplicationCondition();
+          return evaluateCondition(condition, seasonContext);
+        });
+
+        if (matchingTemplates.length === 0) {
+          logger.debug('No templates match for season, skipping', {
+            label: 'OverlayLibrary',
+            showTitle: showItem.title,
+            seasonNumber,
+          });
+          continue;
+        }
+
+        // Check hash to skip unchanged seasons
+        const { calculateOverlayInputHash, extractUsedContextFields } =
+          await import('@server/utils/metadataHashing');
+        const templateDataArray = matchingTemplates.map((t) =>
+          t.getTemplateData()
+        );
+        const applicationConditions = matchingTemplates.map((t) =>
+          t.getApplicationCondition()
+        );
+        const usedFields = extractUsedContextFields(
+          templateDataArray,
+          applicationConditions
+        );
+        const overlayInputHash = calculateOverlayInputHash({
+          templateIds: matchingTemplates.map((t) => t.id).sort(),
+          templateData: templateDataArray,
+          usedFields,
+          context: seasonContext as Record<string, unknown>,
+        });
+
+        const seasonMetadata =
+          await metadataService.getItemMetadata(seasonRatingKey);
+
+        const settings = getSettings();
+        const posterSource = settings.overlays?.defaultPosterSource || 'tmdb';
+
+        const currentPosterUrl =
+          await plexApi.getCurrentPosterUrl(seasonRatingKey);
+        const { posterUrlsMatch } = await import(
+          '@server/utils/posterUrlHelpers'
+        );
+        const plexPosterMissing = !posterUrlsMatch(
+          seasonMetadata?.ourOverlayPosterUrl,
+          currentPosterUrl
+        );
+        const basePosterSourceChanged =
+          seasonMetadata?.basePosterSource !== posterSource;
+
+        if (
+          seasonMetadata?.lastOverlayInputHash === overlayInputHash &&
+          !plexPosterMissing &&
+          !basePosterSourceChanged
+        ) {
+          logger.debug('Season unchanged, skipping', {
+            label: 'OverlayLibrary',
+            showTitle: showItem.title,
+            seasonNumber,
+          });
+          continue;
+        }
+
+        // Get season poster buffer
+        const plexThumb = (season as { thumb?: string }).thumb;
+        const posterBuffer = await plexBasePosterManager.getSeasonPosterBuffer(
+          plexApi,
+          showTmdbId,
+          seasonNumber,
+          seasonRatingKey,
+          language,
+          posterSource as 'tmdb' | 'plex' | 'local',
+          plexThumb
+        );
+
+        if (!posterBuffer) {
+          logger.warn('No poster available for season, skipping', {
+            label: 'OverlayLibrary',
+            showTitle: showItem.title,
+            seasonNumber,
+          });
+          continue;
+        }
+
+        // Render overlays
+        const { width: posterWidth, height: posterHeight } =
+          await overlayTemplateRenderer.getPosterDimensions(posterBuffer);
+        const allOverlays: sharp.OverlayOptions[] = [];
+        let templatesApplied = 0;
+
+        for (const template of templates) {
+          const condition = template.getApplicationCondition();
+          if (!evaluateCondition(condition, seasonContext)) {
+            continue;
+          }
+          const templateData = template.getTemplateData();
+          const templateOverlays =
+            await overlayTemplateRenderer.renderOverlayElements(
+              posterWidth,
+              posterHeight,
+              templateData,
+              seasonContext
+            );
+          if (templateOverlays) {
+            allOverlays.push(...templateOverlays);
+            templatesApplied++;
+          }
+        }
+
+        const currentBuffer = await overlayTemplateRenderer.compositeOverlays(
+          posterBuffer,
+          allOverlays
+        );
+
+        const tempDir = os.tmpdir();
+        const tempPath = path.join(
+          tempDir,
+          `overlay-season-${seasonRatingKey}-${Date.now()}.webp`
+        );
+
+        await fs.writeFile(tempPath, currentBuffer);
+
+        try {
+          await plexApi.uploadPosterFromFile(seasonRatingKey, tempPath);
+
+          try {
+            await plexApi.lockPoster(seasonRatingKey);
+          } catch {
+            // Non-fatal
+          }
+
+          // Record metadata
+          const newPosterUrl =
+            await plexApi.getCurrentPosterUrl(seasonRatingKey);
+          if (newPosterUrl) {
+            await metadataService.recordOverlayApplicationWithBasePoster(
+              seasonRatingKey,
+              libraryId,
+              overlayInputHash,
+              newPosterUrl,
+              {
+                basePosterSource:
+                  posterSource === 'local'
+                    ? 'tmdb'
+                    : (posterSource as 'tmdb' | 'plex'),
+                originalPlexPosterUrl: currentPosterUrl || '',
+                basePosterFilename: '',
+                localPosterModifiedTime: undefined,
+              }
+            );
+          }
+
+          if (templatesApplied > 0) {
+            await plexApi.addLabelToItem(seasonRatingKey, 'Overlay').catch(() => {
+              // Non-fatal
+            });
+          }
+
+          logger.info('Applied overlays to season', {
+            label: 'OverlayLibrary',
+            showTitle: showItem.title,
+            seasonNumber,
+            templatesApplied,
+          });
+        } finally {
+          await fs.unlink(tempPath).catch(() => {
+            // Ignore cleanup errors
+          });
+        }
+      } catch (error) {
+        logger.error('Failed to apply overlays to season', {
+          label: 'OverlayLibrary',
+          showTitle: showItem.title,
+          seasonIndex: season.index,
+          error: error instanceof Error ? error.message : String(error),
+        });
+        // Continue with next season
+      }
     }
   }
 }

@@ -1,5 +1,6 @@
 import PlexAPI from '@server/api/plexapi';
 import { getAdminUser } from '@server/lib/collections/core/CollectionUtilities';
+import { overlayTriggerQueue } from '@server/lib/overlays/OverlayTriggerQueue';
 import { getSettings } from '@server/lib/settings';
 import logger from '@server/logger';
 import { Router } from 'express';
@@ -103,6 +104,17 @@ router.post('/', upload.single('thumb'), async (req, res) => {
     editionTitle: metadata?.editionTitle,
     ratingKey: metadata?.ratingKey,
   });
+
+  // Handle library.new — new content was added and indexed by Plex
+  if (event === 'library.new') {
+    if (metadata?.ratingKey) {
+      const settings = getSettings();
+      if (settings.webhookTriggers?.plex?.enabled) {
+        overlayTriggerQueue.enqueueRatingKey(String(metadata.ratingKey));
+      }
+    }
+    return;
+  }
 
   // Act on play, stop, and scrobble events
   // media.scrobble is fired by Plex when an item is marked as watched (~90% completion)

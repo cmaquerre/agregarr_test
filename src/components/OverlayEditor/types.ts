@@ -675,6 +675,7 @@ export const CONDITION_FIELD_CATEGORIES = {
     { field: 'radarrTags', label: 'Radarr Tags', example: 'english-audio' },
     { field: 'sonarrTags', label: 'Sonarr Tags', example: 'german-audio' },
     { field: 'plexLabels', label: 'Plex Label', example: '4K DV' },
+    { field: 'languageTag', label: 'Language Tag', example: 'MULTI' },
     {
       field: 'daysUntilAction',
       label: 'Days Until Maintainerr Action',

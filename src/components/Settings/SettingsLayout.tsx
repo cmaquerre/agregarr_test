@@ -9,6 +9,8 @@ const messages = defineMessages({
   menuPlexSettings: 'Plex',
   menuSources: 'Sources',
   menuDownloads: 'Downloads',
+  menuWebhooks: 'Webhooks',
+  menuLanguageTags: 'Language Tags',
   menuLogs: 'Logs',
   menuJobs: 'Jobs',
   menuAbout: 'About',
@@ -41,6 +43,16 @@ const SettingsLayout = ({ children }: SettingsLayoutProps) => {
       text: intl.formatMessage(messages.menuDownloads),
       route: '/settings/downloads',
       regex: /^\/settings\/downloads/,
+    },
+    {
+      text: intl.formatMessage(messages.menuWebhooks),
+      route: '/settings/webhooks',
+      regex: /^\/settings\/webhooks/,
+    },
+    {
+      text: intl.formatMessage(messages.menuLanguageTags),
+      route: '/settings/language-tagger',
+      regex: /^\/settings\/language-tagger/,
     },
     {
       text: intl.formatMessage(messages.menuLogs),

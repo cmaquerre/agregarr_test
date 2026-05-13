@@ -448,6 +448,9 @@ export interface OverlayRenderContext {
   // Plex Labels (item-level tags applied in Plex)
   plexLabels?: string[]; // Array of Plex label tags on this item
 
+  // Language tag (VF / MULTI / VOSTFR) — stored internally by LanguageTaggerService
+  languageTag?: string;
+
   // Item metadata
   isPlaceholder: boolean; // true = Coming Soon item, false = real item in Plex
   mediaType: 'movie' | 'show';

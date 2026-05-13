@@ -1468,6 +1468,121 @@ settingsRoutes.post('/watchlistsync', (req, res) => {
   return res.status(200).json(settings.watchlistSync);
 });
 
+// Webhook trigger settings
+settingsRoutes.get('/webhook-triggers', (_req, res) => {
+  const settings = getSettings();
+  const { webhookToken } = settings.main;
+  const { applicationUrl } = settings.main;
+
+  return res.status(200).json({
+    webhookToken,
+    applicationUrl,
+    triggers: settings.webhookTriggers ?? {
+      radarr: { enabled: false, delayMinutes: 5 },
+      sonarr: { enabled: false, delayMinutes: 5 },
+      plex: { enabled: false, delayMinutes: 0 },
+    },
+  });
+});
+
+settingsRoutes.post('/webhook-triggers', (req, res) => {
+  const settings = getSettings();
+  const { triggers } = req.body as {
+    triggers: import('@server/lib/settings').WebhookTriggerSettings;
+  };
+
+  settings.webhookTriggers = triggers;
+  settings.save();
+
+  return res.status(200).json(settings.webhookTriggers);
+});
+
+settingsRoutes.post('/webhook-triggers/regenerate-token', (_req, res) => {
+  const settings = getSettings();
+  settings.main = {
+    ...settings.main,
+    webhookToken: require('crypto').randomBytes(24).toString('hex'),
+  };
+  settings.save();
+  return res.status(200).json({ webhookToken: settings.main.webhookToken });
+});
+
+settingsRoutes.get('/webhook-triggers/queue', (_req, res) => {
+  const { overlayTriggerQueue } = require('@server/lib/overlays/OverlayTriggerQueue');
+  return res.status(200).json({
+    queue: overlayTriggerQueue.getQueueStatus(),
+  });
+});
+
+// Language tagger settings
+settingsRoutes.get('/language-tagger', (_req, res) => {
+  const settings = getSettings();
+  return res.status(200).json({
+    enabled: settings.languageTagger.enabled,
+    plexLibraries: settings.plex.libraries ?? [],
+  });
+});
+
+settingsRoutes.post('/language-tagger', (req, res) => {
+  const settings = getSettings();
+  const { enabled } = req.body as { enabled: boolean };
+  settings.languageTagger = { enabled: Boolean(enabled) };
+  settings.save();
+  return res.status(200).json(settings.languageTagger);
+});
+
+settingsRoutes.get('/language-tagger/records', async (req, res, next) => {
+  try {
+    const { languageTaggerService } = await import(
+      '@server/lib/languageTagger/LanguageTaggerService'
+    );
+    const { mediaType, tag, limit, offset } = req.query as Record<
+      string,
+      string
+    >;
+    const result = await languageTaggerService.getRecords({
+      mediaType: mediaType || undefined,
+      tag: tag || undefined,
+      limit: limit ? parseInt(limit, 10) : 100,
+      offset: offset ? parseInt(offset, 10) : 0,
+    });
+    return res.status(200).json(result);
+  } catch (e) {
+    return next(e);
+  }
+});
+
+settingsRoutes.post('/language-tagger/run', async (req, res, next) => {
+  try {
+    const { libraryId, mediaType } = req.body as {
+      libraryId: string;
+      mediaType: 'movie' | 'show';
+    };
+
+    if (!libraryId || !mediaType) {
+      return res.status(400).json({ message: 'libraryId and mediaType are required' });
+    }
+
+    const { languageTaggerService } = await import(
+      '@server/lib/languageTagger/LanguageTaggerService'
+    );
+
+    const plexApi = await languageTaggerService.getPlexApi();
+    if (!plexApi) {
+      return res.status(503).json({ message: 'Plex not configured' });
+    }
+
+    const result = await languageTaggerService.runLibraryTagging(
+      plexApi,
+      libraryId,
+      mediaType
+    );
+    return res.status(200).json(result);
+  } catch (e) {
+    return next(e);
+  }
+});
+
 settingsRoutes.post('/export-debug', (req, res, next) => {
   try {
     const { includeDatabase, includeSettings, includeLogs } = req.body;

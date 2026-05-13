@@ -612,6 +612,21 @@ export interface WatchlistSyncSettings {
 
 // Quota interface removed - request system not needed in Agregarr
 
+export interface WebhookTriggerConfig {
+  enabled: boolean;
+  delayMinutes: number; // delay before applying overlays (gives Plex time to scan)
+}
+
+export interface WebhookTriggerSettings {
+  radarr: WebhookTriggerConfig;
+  sonarr: WebhookTriggerConfig;
+  plex: WebhookTriggerConfig; // library.new events
+}
+
+export interface LanguageTaggerSettings {
+  enabled: boolean; // auto-tag VF/MULTI/VOSTFR on webhook events
+}
+
 export interface MainSettings {
   apiKey: string;
   applicationTitle: string;
@@ -621,6 +636,7 @@ export interface MainSettings {
   newPlexLogin: boolean;
   trustProxy: boolean;
   locale: string;
+  webhookToken?: string; // Shared secret for Radarr/Sonarr webhook endpoints
   tmdbLanguage?: string; // Language for TMDB API calls (poster metadata, etc.) - defaults to 'en'
   enableTmdbPosterCache?: boolean; // Enable 7-day file cache for TMDB posters to reduce API calls - defaults to true
   nextConfigId?: number; // Next sequential ID for collection configs (starts at 10000)
@@ -705,6 +721,8 @@ interface AllSettings {
   globalExclusions?: GlobalExclusions; // Global item exclusions for collections
   completedMigrations?: string[]; // Track completed migrations
   overlays?: OverlaySettings; // Overlay system settings
+  webhookTriggers?: WebhookTriggerSettings; // Automatic overlay triggers from Radarr/Sonarr/Plex
+  languageTagger?: LanguageTaggerSettings; // VF/MULTI/VOSTFR auto-tagging
 }
 
 const SETTINGS_PATH = process.env.CONFIG_DIRECTORY
@@ -944,6 +962,10 @@ class Settings {
       this.data.main.apiKey = this.generateApiKey();
       this.save();
     }
+    if (!this.data.main.webhookToken) {
+      this.data.main.webhookToken = this.generateApiKey();
+      this.save();
+    }
     return this.data.main;
   }
 
@@ -1103,6 +1125,22 @@ class Settings {
 
   set overlays(data: OverlaySettings | undefined) {
     this.data.overlays = data;
+  }
+
+  get webhookTriggers(): WebhookTriggerSettings | undefined {
+    return this.data.webhookTriggers;
+  }
+
+  set webhookTriggers(data: WebhookTriggerSettings | undefined) {
+    this.data.webhookTriggers = data;
+  }
+
+  get languageTagger(): LanguageTaggerSettings {
+    return this.data.languageTagger ?? { enabled: false };
+  }
+
+  set languageTagger(data: LanguageTaggerSettings) {
+    this.data.languageTagger = data;
   }
 
   // VAPID keys methods removed - push notifications not needed in Agregarr

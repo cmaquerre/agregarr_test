@@ -742,6 +742,22 @@ export async function buildRenderContext(
     );
   }
 
+  // Language tag (VF / MULTI / VOSTFR) — look up internal LanguageTagRecord
+  try {
+    const { getRepository } = await import('@server/datasource');
+    const { LanguageTagRecord } = await import(
+      '@server/entity/LanguageTagRecord'
+    );
+    const langRecord = await getRepository(LanguageTagRecord).findOne({
+      where: { ratingKey: item.ratingKey },
+    });
+    if (langRecord?.tag) {
+      context.languageTag = langRecord.tag;
+    }
+  } catch {
+    // non-fatal — overlay renders without language tag if DB unavailable
+  }
+
   // Maintainerr integration - calculate daysUntilAction
   // Use cached collections if provided, otherwise fetch them
   if (

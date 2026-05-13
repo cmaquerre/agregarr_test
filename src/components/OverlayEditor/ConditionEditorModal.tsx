@@ -155,6 +155,7 @@ const RuleItem: React.FC<RuleItemProps> = ({
   const isTagField = isRadarrTags || isSonarrTags;
   const isCollectionField = field === 'collection';
   const isPlexLabels = field === 'plexLabels';
+  const isLanguageTag = field === 'languageTag';
   const isExistsOperator = operator === 'exists';
 
   // Fetch all tags from all Radarr instances
@@ -418,6 +419,22 @@ const RuleItem: React.FC<RuleItemProps> = ({
               {tag.label}
             </option>
           ))}
+        </select>
+      ) : isLanguageTag ? (
+        <select
+          value={String(value)}
+          onChange={(e) => {
+            onChange({
+              ...rule,
+              value: e.target.value,
+            });
+          }}
+          className="flex-1 rounded border border-stone-600 bg-stone-700 px-2 py-1 text-sm text-white"
+        >
+          <option value="">Select tag...</option>
+          <option value="VF">VF</option>
+          <option value="MULTI">MULTI</option>
+          <option value="VOSTFR">VOSTFR</option>
         </select>
       ) : isPlexLabels ? (
         <Select
