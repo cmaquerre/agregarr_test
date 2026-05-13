@@ -1,4 +1,5 @@
 import Button from '@app/components/Common/Button';
+import { LANGUAGE_TAG_COLORS } from '@app/utils/languageTagColors';
 import { ArrowPathIcon, PlayIcon } from '@heroicons/react/24/outline';
 import axios from 'axios';
 import { useEffect, useState } from 'react';
@@ -85,11 +86,7 @@ interface TaggingResult {
   items: TaggingRunItem[];
 }
 
-const TAG_COLORS: Record<string, string> = {
-  VF: 'bg-blue-600 text-white',
-  MULTI: 'bg-purple-600 text-white',
-  VOSTFR: 'bg-stone-600 text-stone-200',
-};
+const TAG_COLORS = LANGUAGE_TAG_COLORS;
 
 const SOURCE_LABELS: Record<string, string> = {
   radarr: 'Radarr',

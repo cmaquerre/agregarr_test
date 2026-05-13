@@ -45,7 +45,10 @@ export async function getAudioLanguagesFromFile(
     let stdout = '';
     proc.stdout.on('data', (chunk: Buffer) => (stdout += chunk.toString()));
 
+    let killTimer: ReturnType<typeof setTimeout>;
+
     proc.on('close', (code) => {
+      clearTimeout(killTimer);
       if (code !== 0 || !stdout.trim()) {
         resolve([]);
         return;
@@ -63,6 +66,7 @@ export async function getAudioLanguagesFromFile(
     });
 
     proc.on('error', (err) => {
+      clearTimeout(killTimer);
       logger.debug('FfprobeService: spawn error', {
         label: 'FfprobeService',
         error: err.message,
@@ -71,11 +75,8 @@ export async function getAudioLanguagesFromFile(
       resolve([]);
     });
 
-    // Kill after 30s to avoid hanging
-    setTimeout(() => {
-      try {
-        proc.kill();
-      } catch {}
+    killTimer = setTimeout(() => {
+      try { proc.kill(); } catch {}
       resolve([]);
     }, 30_000);
   });

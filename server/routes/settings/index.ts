@@ -1610,53 +1610,57 @@ settingsRoutes.get('/tags-overview', async (_req, res, next) => {
     const SonarrAPI = (await import('@server/api/servarr/sonarr')).default;
     const settings = getSettings();
 
-    const records = await getRepository(LanguageTagRecord).find({
-      order: { title: 'ASC' },
-    });
+    const [records, radarrTagsByTmdb, sonarrTagsByTmdb] = await Promise.all([
+      getRepository(LanguageTagRecord).find({ order: { title: 'ASC' } }),
 
-    // Build tmdbId → radarr tag names map
-    const radarrTagsByTmdb = new Map<number, string[]>();
-    for (const radarrSettings of settings.radarr) {
-      if (!radarrSettings.hostname) continue;
-      try {
-        const radarr = new RadarrAPI({
-          apiKey: radarrSettings.apiKey,
-          url: RadarrAPI.buildUrl(radarrSettings, '/api/v3'),
-        });
-        const [movies, tags] = await Promise.all([radarr.getMovies(), radarr.getTags()]);
-        const tagMap = new Map(tags.map((t) => [t.id, t.label]));
-        for (const movie of movies) {
-          if (!movie.tmdbId || !movie.tags?.length) continue;
-          const names = movie.tags.map((id) => tagMap.get(id) ?? String(id)).filter(Boolean);
-          const existing = radarrTagsByTmdb.get(movie.tmdbId) ?? [];
-          radarrTagsByTmdb.set(movie.tmdbId, [...new Set([...existing, ...names])]);
+      // Build tmdbId → radarr tag names from all instances concurrently
+      Promise.all(
+        settings.radarr
+          .filter((s) => s.hostname)
+          .map(async (s) => {
+            try {
+              const radarr = new RadarrAPI({ apiKey: s.apiKey, url: RadarrAPI.buildUrl(s, '/api/v3') });
+              const [movies, tags] = await Promise.all([radarr.getMovies(), radarr.getTags()]);
+              const tagMap = new Map(tags.map((t) => [t.id, t.label]));
+              return movies
+                .filter((m) => m.tmdbId && m.tags?.length)
+                .map((m) => ({ tmdbId: m.tmdbId!, names: m.tags.map((id) => tagMap.get(id) ?? '').filter(Boolean) }));
+            } catch { return []; }
+          })
+      ).then((results) => {
+        const map = new Map<number, string[]>();
+        for (const entries of results) {
+          for (const { tmdbId, names } of entries) {
+            map.set(tmdbId, [...new Set([...(map.get(tmdbId) ?? []), ...names])]);
+          }
         }
-      } catch {
-        // skip failing instance
-      }
-    }
+        return map;
+      }),
 
-    // Build tmdbId → sonarr tag names map
-    const sonarrTagsByTmdb = new Map<number, string[]>();
-    for (const sonarrSettings of settings.sonarr) {
-      if (!sonarrSettings.hostname) continue;
-      try {
-        const sonarr = new SonarrAPI({
-          apiKey: sonarrSettings.apiKey,
-          url: SonarrAPI.buildUrl(sonarrSettings, '/api/v3'),
-        });
-        const [series, tags] = await Promise.all([sonarr.getSeries(), sonarr.getTags()]);
-        const tagMap = new Map(tags.map((t) => [t.id, t.label]));
-        for (const show of series) {
-          if (!show.tmdbId || !show.tags?.length) continue;
-          const names = show.tags.map((id) => tagMap.get(id) ?? String(id)).filter(Boolean);
-          const existing = sonarrTagsByTmdb.get(show.tmdbId) ?? [];
-          sonarrTagsByTmdb.set(show.tmdbId, [...new Set([...existing, ...names])]);
+      // Build tmdbId → sonarr tag names from all instances concurrently
+      Promise.all(
+        settings.sonarr
+          .filter((s) => s.hostname)
+          .map(async (s) => {
+            try {
+              const sonarr = new SonarrAPI({ apiKey: s.apiKey, url: SonarrAPI.buildUrl(s, '/api/v3') });
+              const [series, tags] = await Promise.all([sonarr.getSeries(), sonarr.getTags()]);
+              const tagMap = new Map(tags.map((t) => [t.id, t.label]));
+              return series
+                .filter((sh) => sh.tmdbId && sh.tags?.length)
+                .map((sh) => ({ tmdbId: sh.tmdbId!, names: sh.tags.map((id) => tagMap.get(id) ?? '').filter(Boolean) }));
+            } catch { return []; }
+          })
+      ).then((results) => {
+        const map = new Map<number, string[]>();
+        for (const entries of results) {
+          for (const { tmdbId, names } of entries) {
+            map.set(tmdbId, [...new Set([...(map.get(tmdbId) ?? []), ...names])]);
+          }
         }
-      } catch {
-        // skip failing instance
-      }
-    }
+        return map;
+      }),
+    ]);
 
     const items = records.map((r) => ({
       ratingKey: r.ratingKey,

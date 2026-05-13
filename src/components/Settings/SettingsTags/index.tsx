@@ -1,3 +1,4 @@
+import { LANGUAGE_TAG_COLORS } from '@app/utils/languageTagColors';
 import { ArrowPathIcon, MagnifyingGlassIcon } from '@heroicons/react/24/outline';
 import { useState } from 'react';
 import { defineMessages, useIntl } from 'react-intl';
@@ -37,11 +38,7 @@ interface TagItem {
   updatedAt: string;
 }
 
-const LANG_COLORS: Record<string, string> = {
-  VF: 'bg-blue-700 text-blue-100',
-  MULTI: 'bg-green-700 text-green-100',
-  VOSTFR: 'bg-yellow-700 text-yellow-100',
-};
+const LANG_COLORS = LANGUAGE_TAG_COLORS;
 
 const TagPill: React.FC<{ label: string; color?: string }> = ({ label, color = 'bg-stone-600 text-stone-200' }) => (
   <span className={`inline-block rounded px-1.5 py-0.5 text-xs font-medium ${color}`}>

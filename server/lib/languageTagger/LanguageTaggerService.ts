@@ -72,15 +72,6 @@ function determineMajorityTag(tags: LanguageTag[]): LanguageTag {
   return 'VOSTFR';
 }
 
-function buildServarrUrl(instance: {
-  useSsl: boolean;
-  hostname: string;
-  port: number;
-  baseUrl?: string;
-}): string {
-  return `${instance.useSsl ? 'https' : 'http'}://${instance.hostname}:${instance.port}${instance.baseUrl ?? ''}/api/v3`;
-}
-
 /** Extract file paths from Plex Part objects (episode or movie). */
 function extractFilePaths(metadata: PlexMetadata): string[] {
   const paths: string[] = [];
@@ -95,9 +86,8 @@ function extractFilePaths(metadata: PlexMetadata): string[] {
 }
 
 /**
- * Apply configured path mappings to translate a Plex-reported file path
- * into the equivalent path inside the Docker container.
- * e.g. /mnt/nas/movies/film.mkv → /media/movies/film.mkv
+ * Translates a Plex-reported file path to the equivalent Docker container path.
+ * Needed when Plex uses host paths that differ from container-mounted paths.
  */
 function applyPathMappings(filePath: string): string {
   const settings = getSettings();
@@ -108,25 +98,31 @@ function applyPathMappings(filePath: string): string {
       const base = localPath.endsWith('/') ? localPath : localPath + '/';
       return base + filePath.slice(prefix.length);
     }
-    // exact match (no trailing slash)
     if (filePath === plexPath) return localPath;
   }
   return filePath;
 }
 
+type MovieTagEntry = { tag: LanguageTag; source: 'radarr' };
+type ShowTagEntry = {
+  seriesTag: LanguageTag;
+  seasonTags: Record<number, LanguageTag>;
+  source: 'sonarr';
+};
+
 class LanguageTaggerService {
   private getRadarrApis(): RadarrAPI[] {
     const settings = getSettings();
-    return settings.radarr.map(
-      (s) => new RadarrAPI({ url: buildServarrUrl(s), apiKey: s.apiKey })
-    );
+    return settings.radarr
+      .filter((s) => s.hostname)
+      .map((s) => new RadarrAPI({ url: RadarrAPI.buildUrl(s, '/api/v3'), apiKey: s.apiKey }));
   }
 
   private getSonarrApis(): SonarrAPI[] {
     const settings = getSettings();
-    return settings.sonarr.map(
-      (s) => new SonarrAPI({ url: buildServarrUrl(s), apiKey: s.apiKey })
-    );
+    return settings.sonarr
+      .filter((s) => s.hostname)
+      .map((s) => new SonarrAPI({ url: SonarrAPI.buildUrl(s, '/api/v3'), apiKey: s.apiKey }));
   }
 
   private async saveRecord(params: {
@@ -148,23 +144,105 @@ class LanguageTaggerService {
     record.tmdbId = params.tmdbId;
     record.tag = params.tag;
     record.seasonTagsJson = params.seasonTags
-      ? JSON.stringify(
-          Object.fromEntries(
-            Object.entries(params.seasonTags).map(([k, v]) => [k, v])
-          )
-        )
+      ? JSON.stringify(params.seasonTags)
       : undefined;
     record.source = params.source;
     await repo.save(record);
   }
 
   // ---------------------------------------------------------------------------
-  // Radarr / Sonarr detection
+  // Bulk tag maps — fetch all at once to avoid N+1 API calls in runLibraryTagging
+  // ---------------------------------------------------------------------------
+
+  /**
+   * Fetches all Radarr movies and their audio languages in one pass per instance.
+   * Returns a map of tmdbId → tag, built once before iterating the library.
+   */
+  private async buildMovieTagMap(): Promise<Map<number, MovieTagEntry>> {
+    const map = new Map<number, MovieTagEntry>();
+    for (const api of this.getRadarrApis()) {
+      try {
+        const movies = await api.getMovies();
+        const withFiles = movies.filter((m) => m.hasFile && m.tmdbId);
+        const fileResults = await Promise.all(
+          withFiles.map((m) => api.getMovieFilesByMovieId(m.id).catch(() => []))
+        );
+        for (let i = 0; i < withFiles.length; i++) {
+          const movie = withFiles[i];
+          if (!movie.tmdbId || map.has(movie.tmdbId)) continue;
+          const files = fileResults[i];
+          if (!files.length) continue;
+          const langStr = files[0].mediaInfo?.audioLanguages ?? '';
+          if (!langStr.trim()) continue;
+          map.set(movie.tmdbId, { tag: detectTagFromString(langStr), source: 'radarr' });
+        }
+      } catch {
+        // skip failing instance
+      }
+    }
+    return map;
+  }
+
+  /**
+   * Fetches all Sonarr series and their episode file languages in one pass per instance.
+   * Returns a map of tmdbId → { seriesTag, seasonTags }, built once before iterating the library.
+   */
+  private async buildShowTagMap(): Promise<Map<number, ShowTagEntry>> {
+    const map = new Map<number, ShowTagEntry>();
+    for (const api of this.getSonarrApis()) {
+      try {
+        const allSeries = await api.getSeries();
+        const candidates = allSeries.filter(
+          (s) => s.tmdbId && s.statistics?.episodeFileCount > 0
+        );
+        const fileResults = await Promise.all(
+          candidates.map((s) =>
+            s.id ? api.getEpisodeFilesBySeries(s.id).catch(() => []) : Promise.resolve([])
+          )
+        );
+        for (let i = 0; i < candidates.length; i++) {
+          const series = candidates[i];
+          if (!series.tmdbId || map.has(series.tmdbId)) continue;
+          const files = fileResults[i];
+          if (!files.length) continue;
+
+          const seasonGroups = new Map<number, LanguageTag[]>();
+          let anyLang = false;
+          for (const file of files) {
+            const langStr = file.mediaInfo?.audioLanguages ?? '';
+            if (!langStr.trim()) continue;
+            anyLang = true;
+            const tag = detectTagFromString(langStr);
+            const group = seasonGroups.get(file.seasonNumber) ?? [];
+            group.push(tag);
+            seasonGroups.set(file.seasonNumber, group);
+          }
+          if (!anyLang) continue;
+
+          const seasonTags: Record<number, LanguageTag> = {};
+          for (const [season, tags] of seasonGroups) {
+            seasonTags[season] = determineMajorityTag(tags);
+          }
+          map.set(series.tmdbId, {
+            seriesTag: determineMajorityTag(Object.values(seasonTags)),
+            seasonTags,
+            source: 'sonarr',
+          });
+        }
+      } catch {
+        // skip failing instance
+      }
+    }
+    return map;
+  }
+
+  // ---------------------------------------------------------------------------
+  // Single-item Radarr / Sonarr detection (used by tagMovie / tagShow on webhook)
   // ---------------------------------------------------------------------------
 
   private async fetchMovieTagFromRadarr(
     tmdbId: number
-  ): Promise<{ tag: LanguageTag; source: 'radarr' } | null> {
+  ): Promise<MovieTagEntry | null> {
     for (const api of this.getRadarrApis()) {
       try {
         const movies = await api.getMoviesFilteredByTmdbId(tmdbId);
@@ -175,7 +253,7 @@ class LanguageTaggerService {
         if (!files.length) continue;
 
         const langStr = files[0].mediaInfo?.audioLanguages ?? '';
-        if (!langStr.trim()) continue; // no mediaInfo analyzed yet
+        if (!langStr.trim()) continue;
 
         return { tag: detectTagFromString(langStr), source: 'radarr' };
       } catch {
@@ -185,11 +263,7 @@ class LanguageTaggerService {
     return null;
   }
 
-  private async fetchShowTagsFromSonarr(tmdbId: number): Promise<{
-    seriesTag: LanguageTag;
-    seasonTags: Record<number, LanguageTag>;
-    source: 'sonarr';
-  } | null> {
+  private async fetchShowTagsFromSonarr(tmdbId: number): Promise<ShowTagEntry | null> {
     for (const api of this.getSonarrApis()) {
       try {
         const series = await api.getSeriesByTmdbId(tmdbId);
@@ -206,10 +280,9 @@ class LanguageTaggerService {
           if (!langStr.trim()) continue;
           anyLang = true;
           const tag = detectTagFromString(langStr);
-          if (!seasonGroups.has(file.seasonNumber)) {
-            seasonGroups.set(file.seasonNumber, []);
-          }
-          seasonGroups.get(file.seasonNumber)!.push(tag);
+          const group = seasonGroups.get(file.seasonNumber) ?? [];
+          group.push(tag);
+          seasonGroups.set(file.seasonNumber, group);
         }
 
         if (!anyLang) continue;
@@ -218,9 +291,12 @@ class LanguageTaggerService {
         for (const [season, tags] of seasonGroups) {
           seasonTags[season] = determineMajorityTag(tags);
         }
-        const seriesTag = determineMajorityTag(Object.values(seasonTags));
 
-        return { seriesTag, seasonTags, source: 'sonarr' };
+        return {
+          seriesTag: determineMajorityTag(Object.values(seasonTags)),
+          seasonTags,
+          source: 'sonarr',
+        };
       } catch {
         // try next instance
       }
@@ -229,7 +305,7 @@ class LanguageTaggerService {
   }
 
   // ---------------------------------------------------------------------------
-  // ffprobe fallback (file paths from Plex metadata)
+  // ffprobe fallback
   // ---------------------------------------------------------------------------
 
   private async fetchMovieTagFromFfprobe(
@@ -268,35 +344,36 @@ class LanguageTaggerService {
 
       for (const season of seasons) {
         if (season.type !== 'season') continue;
-        const seasonNumber =
-          season.index ?? 0;
+        const seasonNumber = season.index ?? 0;
 
         const episodes = await plexApi.getChildrenMetadata(season.ratingKey);
-        const episodeTags: LanguageTag[] = [];
+        const episodeFiles = episodes
+          .filter((ep) => ep.type === 'episode')
+          .map((ep) => extractFilePaths(ep).map(applyPathMappings)[0])
+          .filter(Boolean) as string[];
 
-        for (const episode of episodes) {
-          if (episode.type !== 'episode') continue;
-          const paths = extractFilePaths(episode).map(applyPathMappings);
-          if (!paths.length) continue;
+        // Probe all episodes in the season concurrently
+        const langResults = await Promise.all(
+          episodeFiles.map((f) => getAudioLanguagesFromFile(f))
+        );
 
-          const langs = await getAudioLanguagesFromFile(paths[0]);
-          if (langs.length) {
-            episodeTags.push(detectTag(langs));
-            anyTag = true;
-          }
-        }
+        const episodeTags = langResults
+          .filter((langs) => langs.length > 0)
+          .map((langs) => detectTag(langs));
 
         if (episodeTags.length) {
           seasonTags[seasonNumber] = determineMajorityTag(episodeTags);
+          anyTag = true;
         }
       }
 
       if (!anyTag) return null;
 
-      const seriesTag = determineMajorityTag(
-        Object.values(seasonTags) as LanguageTag[]
-      );
-      return { seriesTag, seasonTags, source: 'ffprobe' };
+      return {
+        seriesTag: determineMajorityTag(Object.values(seasonTags) as LanguageTag[]),
+        seasonTags,
+        source: 'ffprobe',
+      };
     } catch (e) {
       logger.debug('LanguageTagger: ffprobe show scan failed', {
         label: 'LanguageTagger',
@@ -317,47 +394,15 @@ class LanguageTaggerService {
     tmdbId: number,
     plexApi: PlexAPI
   ): Promise<void> {
-    const radarrResult = await this.fetchMovieTagFromRadarr(tmdbId);
+    const result =
+      (await this.fetchMovieTagFromRadarr(tmdbId)) ??
+      (await this.fetchMovieTagFromFfprobe(ratingKey, plexApi));
 
-    if (radarrResult) {
-      await this.saveRecord({
-        ratingKey,
-        title,
-        mediaType: 'movie',
-        tmdbId,
-        tag: radarrResult.tag,
-        source: radarrResult.source,
-      });
-      logger.info('LanguageTagger: tagged movie via Radarr', {
-        label: 'LanguageTagger',
-        title,
-        tag: radarrResult.tag,
-      });
-      return;
-    }
-
-    // Fallback: ffprobe
-    const ffResult = await this.fetchMovieTagFromFfprobe(ratingKey, plexApi);
-    if (ffResult) {
-      await this.saveRecord({
-        ratingKey,
-        title,
-        mediaType: 'movie',
-        tmdbId,
-        tag: ffResult.tag,
-        source: ffResult.source,
-      });
-      logger.info('LanguageTagger: tagged movie via ffprobe', {
-        label: 'LanguageTagger',
-        title,
-        tag: ffResult.tag,
-      });
+    if (result) {
+      await this.saveRecord({ ratingKey, title, mediaType: 'movie', tmdbId, tag: result.tag, source: result.source });
+      logger.info('LanguageTagger: tagged movie', { label: 'LanguageTagger', title, tag: result.tag, source: result.source });
     } else {
-      logger.debug('LanguageTagger: no language info found for movie', {
-        label: 'LanguageTagger',
-        title,
-        tmdbId,
-      });
+      logger.debug('LanguageTagger: no language info found for movie', { label: 'LanguageTagger', title, tmdbId });
     }
   }
 
@@ -367,52 +412,23 @@ class LanguageTaggerService {
     tmdbId: number,
     plexApi: PlexAPI
   ): Promise<void> {
-    const sonarrResult = await this.fetchShowTagsFromSonarr(tmdbId);
+    const result =
+      (await this.fetchShowTagsFromSonarr(tmdbId)) ??
+      (await this.fetchShowTagsFromFfprobe(showRatingKey, plexApi));
 
-    if (sonarrResult) {
+    if (result) {
       await this.saveRecord({
         ratingKey: showRatingKey,
         title,
         mediaType: 'show',
         tmdbId,
-        tag: sonarrResult.seriesTag,
-        seasonTags: sonarrResult.seasonTags,
-        source: sonarrResult.source,
+        tag: result.seriesTag,
+        seasonTags: result.seasonTags,
+        source: result.source,
       });
-      logger.info('LanguageTagger: tagged show via Sonarr', {
-        label: 'LanguageTagger',
-        title,
-        seriesTag: sonarrResult.seriesTag,
-      });
-      return;
-    }
-
-    // Fallback: ffprobe
-    const ffResult = await this.fetchShowTagsFromFfprobe(
-      showRatingKey,
-      plexApi
-    );
-    if (ffResult) {
-      await this.saveRecord({
-        ratingKey: showRatingKey,
-        title,
-        mediaType: 'show',
-        tmdbId,
-        tag: ffResult.seriesTag,
-        seasonTags: ffResult.seasonTags,
-        source: ffResult.source,
-      });
-      logger.info('LanguageTagger: tagged show via ffprobe', {
-        label: 'LanguageTagger',
-        title,
-        seriesTag: ffResult.seriesTag,
-      });
+      logger.info('LanguageTagger: tagged show', { label: 'LanguageTagger', title, tag: result.seriesTag, source: result.source });
     } else {
-      logger.debug('LanguageTagger: no language info found for show', {
-        label: 'LanguageTagger',
-        title,
-        tmdbId,
-      });
+      logger.debug('LanguageTagger: no language info found for show', { label: 'LanguageTagger', title, tmdbId });
     }
   }
 
@@ -421,120 +437,58 @@ class LanguageTaggerService {
     libraryId: string,
     mediaType: 'movie' | 'show'
   ): Promise<TaggingResult> {
-    const result: TaggingResult = {
-      tagged: 0,
-      skipped: 0,
-      errors: 0,
-      items: [],
-    };
+    const result: TaggingResult = { tagged: 0, skipped: 0, errors: 0, items: [] };
+
+    // Pre-build tag maps to avoid one API call per library item
+    const [movieTagMap, showTagMap] = await Promise.all([
+      mediaType === 'movie' ? this.buildMovieTagMap() : Promise.resolve(new Map<number, MovieTagEntry>()),
+      mediaType === 'show' ? this.buildShowTagMap() : Promise.resolve(new Map<number, ShowTagEntry>()),
+    ]);
 
     let offset = 0;
     const pageSize = 50;
 
     while (true) {
-      const { items, totalSize } = await plexApi.getLibraryContents(
-        libraryId,
-        { offset, size: pageSize }
-      );
+      const { items, totalSize } = await plexApi.getLibraryContents(libraryId, { offset, size: pageSize });
 
       for (const item of items) {
         const tmdbGuid = item.Guid?.find((g) => g.id.startsWith('tmdb://'));
-        const tmdbId = tmdbGuid
-          ? parseInt(tmdbGuid.id.replace('tmdb://', ''), 10)
-          : NaN;
+        const tmdbId = tmdbGuid ? parseInt(tmdbGuid.id.replace('tmdb://', ''), 10) : NaN;
 
         if (isNaN(tmdbId)) {
           result.skipped++;
-          result.items.push({
-            title: item.title,
-            ratingKey: item.ratingKey,
-            tag: null,
-          });
+          result.items.push({ title: item.title, ratingKey: item.ratingKey, tag: null });
           continue;
         }
 
         try {
+          let tag: LanguageTag | null = null;
+          let source: string | undefined;
+          let seasonTags: Record<number, LanguageTag> | undefined;
+
           if (mediaType === 'movie') {
-            let res: { tag: LanguageTag; source: string } | null =
-              await this.fetchMovieTagFromRadarr(tmdbId);
-            if (!res) res = await this.fetchMovieTagFromFfprobe(item.ratingKey, plexApi);
-
-            if (res) {
-              await this.saveRecord({
-                ratingKey: item.ratingKey,
-                title: item.title,
-                mediaType: 'movie',
-                tmdbId,
-                tag: res.tag,
-                source: res.source,
-              });
-              result.tagged++;
-              result.items.push({
-                title: item.title,
-                ratingKey: item.ratingKey,
-                tag: res.tag,
-                source: res.source,
-              });
-            } else {
-              result.skipped++;
-              result.items.push({
-                title: item.title,
-                ratingKey: item.ratingKey,
-                tag: null,
-              });
-            }
+            const entry = movieTagMap.get(tmdbId) ?? await this.fetchMovieTagFromFfprobe(item.ratingKey, plexApi);
+            if (entry) { tag = entry.tag; source = entry.source; }
           } else {
-            let res = await this.fetchShowTagsFromSonarr(tmdbId);
+            const entry = showTagMap.get(tmdbId) ?? await this.fetchShowTagsFromFfprobe(item.ratingKey, plexApi);
+            if (entry) { tag = entry.seriesTag; source = entry.source; seasonTags = entry.seasonTags; }
+          }
 
-            if (res) {
-              await this.saveRecord({
-                ratingKey: item.ratingKey,
-                title: item.title,
-                mediaType: 'show',
-                tmdbId,
-                tag: res.seriesTag,
-                seasonTags: res.seasonTags,
-                source: res.source,
-              });
-              result.tagged++;
-              result.items.push({
-                title: item.title,
-                ratingKey: item.ratingKey,
-                tag: res.seriesTag,
-                source: res.source,
-              });
-            } else {
-              // ffprobe fallback for shows
-              const ffRes = await this.fetchShowTagsFromFfprobe(
-                item.ratingKey,
-                plexApi
-              );
-              if (ffRes) {
-                await this.saveRecord({
-                  ratingKey: item.ratingKey,
-                  title: item.title,
-                  mediaType: 'show',
-                  tmdbId,
-                  tag: ffRes.seriesTag,
-                  seasonTags: ffRes.seasonTags,
-                  source: ffRes.source,
-                });
-                result.tagged++;
-                result.items.push({
-                  title: item.title,
-                  ratingKey: item.ratingKey,
-                  tag: ffRes.seriesTag,
-                  source: ffRes.source,
-                });
-              } else {
-                result.skipped++;
-                result.items.push({
-                  title: item.title,
-                  ratingKey: item.ratingKey,
-                  tag: null,
-                });
-              }
-            }
+          if (tag) {
+            await this.saveRecord({
+              ratingKey: item.ratingKey,
+              title: item.title,
+              mediaType,
+              tmdbId,
+              tag,
+              seasonTags,
+              source: source!,
+            });
+            result.tagged++;
+            result.items.push({ title: item.title, ratingKey: item.ratingKey, tag, source });
+          } else {
+            result.skipped++;
+            result.items.push({ title: item.title, ratingKey: item.ratingKey, tag: null });
           }
         } catch (e) {
           result.errors++;
