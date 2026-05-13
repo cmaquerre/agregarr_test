@@ -72,6 +72,23 @@ function determineMajorityTag(tags: LanguageTag[]): LanguageTag {
   return 'VOSTFR';
 }
 
+/** Extract audio language codes from Plex Media.Part.Stream entries (streamType 2 = audio). */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function extractAudioLanguagesFromPlex(obj: any): string[] {
+  const langs = new Set<string>();
+  for (const media of obj?.Media ?? []) {
+    for (const part of media?.Part ?? []) {
+      for (const stream of part?.Stream ?? []) {
+        if (stream?.streamType === 2) {
+          const lang: string | undefined = stream.languageCode ?? stream.language;
+          if (lang?.trim()) langs.add(lang.toLowerCase().trim());
+        }
+      }
+    }
+  }
+  return [...langs];
+}
+
 /** Extract file paths from Plex Part objects (episode or movie). */
 function extractFilePaths(metadata: PlexMetadata): string[] {
   const paths: string[] = [];
@@ -103,11 +120,11 @@ function applyPathMappings(filePath: string): string {
   return filePath;
 }
 
-type MovieTagEntry = { tag: LanguageTag; source: 'radarr' };
+type MovieTagEntry = { tag: LanguageTag; source: 'radarr' | 'plex' };
 type ShowTagEntry = {
   seriesTag: LanguageTag;
   seasonTags: Record<number, LanguageTag>;
-  source: 'sonarr';
+  source: 'sonarr' | 'plex';
 };
 
 class LanguageTaggerService {
@@ -305,6 +322,62 @@ class LanguageTaggerService {
   }
 
   // ---------------------------------------------------------------------------
+  // Plex stream detection (reads audio stream metadata already available in Plex)
+  // ---------------------------------------------------------------------------
+
+  private async fetchMovieTagFromPlex(
+    ratingKey: string,
+    plexApi: PlexAPI
+  ): Promise<MovieTagEntry | null> {
+    try {
+      const metadata = await plexApi.getMetadata(ratingKey);
+      const langs = extractAudioLanguagesFromPlex(metadata);
+      if (!langs.length) return null;
+      return { tag: detectTag(langs), source: 'plex' };
+    } catch {
+      return null;
+    }
+  }
+
+  private async fetchShowTagsFromPlex(
+    showRatingKey: string,
+    plexApi: PlexAPI
+  ): Promise<ShowTagEntry | null> {
+    try {
+      const seasons = await plexApi.getChildrenMetadata(showRatingKey);
+      const seasonTags: Record<number, LanguageTag> = {};
+      let anyTag = false;
+
+      for (const season of seasons) {
+        if (season.type !== 'season') continue;
+        const seasonNumber = season.index ?? 0;
+
+        const episodes = await plexApi.getChildrenMetadata(season.ratingKey);
+        const episodeTags = episodes
+          .filter((ep) => ep.type === 'episode')
+          .map((ep) => extractAudioLanguagesFromPlex(ep))
+          .filter((langs) => langs.length > 0)
+          .map((langs) => detectTag(langs));
+
+        if (episodeTags.length) {
+          seasonTags[seasonNumber] = determineMajorityTag(episodeTags);
+          anyTag = true;
+        }
+      }
+
+      if (!anyTag) return null;
+
+      return {
+        seriesTag: determineMajorityTag(Object.values(seasonTags)),
+        seasonTags,
+        source: 'plex',
+      };
+    } catch {
+      return null;
+    }
+  }
+
+  // ---------------------------------------------------------------------------
   // ffprobe fallback
   // ---------------------------------------------------------------------------
 
@@ -396,6 +469,7 @@ class LanguageTaggerService {
   ): Promise<void> {
     const result =
       (await this.fetchMovieTagFromRadarr(tmdbId)) ??
+      (await this.fetchMovieTagFromPlex(ratingKey, plexApi)) ??
       (await this.fetchMovieTagFromFfprobe(ratingKey, plexApi));
 
     if (result) {
@@ -414,6 +488,7 @@ class LanguageTaggerService {
   ): Promise<void> {
     const result =
       (await this.fetchShowTagsFromSonarr(tmdbId)) ??
+      (await this.fetchShowTagsFromPlex(showRatingKey, plexApi)) ??
       (await this.fetchShowTagsFromFfprobe(showRatingKey, plexApi));
 
     if (result) {
@@ -467,10 +542,16 @@ class LanguageTaggerService {
           let seasonTags: Record<number, LanguageTag> | undefined;
 
           if (mediaType === 'movie') {
-            const entry = movieTagMap.get(tmdbId) ?? await this.fetchMovieTagFromFfprobe(item.ratingKey, plexApi);
+            const entry =
+              movieTagMap.get(tmdbId) ??
+              (await this.fetchMovieTagFromPlex(item.ratingKey, plexApi)) ??
+              (await this.fetchMovieTagFromFfprobe(item.ratingKey, plexApi));
             if (entry) { tag = entry.tag; source = entry.source; }
           } else {
-            const entry = showTagMap.get(tmdbId) ?? await this.fetchShowTagsFromFfprobe(item.ratingKey, plexApi);
+            const entry =
+              showTagMap.get(tmdbId) ??
+              (await this.fetchShowTagsFromPlex(item.ratingKey, plexApi)) ??
+              (await this.fetchShowTagsFromFfprobe(item.ratingKey, plexApi));
             if (entry) { tag = entry.seriesTag; source = entry.source; seasonTags = entry.seasonTags; }
           }
 
