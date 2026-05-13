@@ -627,6 +627,15 @@ export interface LanguageTaggerSettings {
   enabled: boolean; // auto-tag VF/MULTI/VOSTFR on webhook events
 }
 
+export interface MediaPathMapping {
+  plexPath: string; // path prefix as reported by Plex (e.g. /mnt/nas/movies)
+  localPath: string; // corresponding path inside the container (e.g. /media/movies)
+}
+
+export interface MediaFolderSettings {
+  pathMappings: MediaPathMapping[];
+}
+
 export interface MainSettings {
   apiKey: string;
   applicationTitle: string;
@@ -723,6 +732,7 @@ interface AllSettings {
   overlays?: OverlaySettings; // Overlay system settings
   webhookTriggers?: WebhookTriggerSettings; // Automatic overlay triggers from Radarr/Sonarr/Plex
   languageTagger?: LanguageTaggerSettings; // VF/MULTI/VOSTFR auto-tagging
+  mediaFolders?: MediaFolderSettings; // Path mappings for media files (Plex path → container path)
 }
 
 const SETTINGS_PATH = process.env.CONFIG_DIRECTORY
@@ -1141,6 +1151,14 @@ class Settings {
 
   set languageTagger(data: LanguageTaggerSettings) {
     this.data.languageTagger = data;
+  }
+
+  get mediaFolders(): MediaFolderSettings {
+    return this.data.mediaFolders ?? { pathMappings: [] };
+  }
+
+  set mediaFolders(data: MediaFolderSettings) {
+    this.data.mediaFolders = data;
   }
 
   // VAPID keys methods removed - push notifications not needed in Agregarr

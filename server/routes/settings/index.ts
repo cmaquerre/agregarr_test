@@ -1583,6 +1583,24 @@ settingsRoutes.post('/language-tagger/run', async (req, res, next) => {
   }
 });
 
+// Media folder path mappings
+settingsRoutes.get('/media-folders', (req, res) => {
+  const settings = getSettings();
+  return res.status(200).json(settings.mediaFolders);
+});
+
+settingsRoutes.post('/media-folders', (req, res) => {
+  const settings = getSettings();
+  const { pathMappings } = req.body as {
+    pathMappings: { plexPath: string; localPath: string }[];
+  };
+  settings.mediaFolders = {
+    pathMappings: Array.isArray(pathMappings) ? pathMappings : [],
+  };
+  settings.save();
+  return res.status(200).json(settings.mediaFolders);
+});
+
 settingsRoutes.post('/export-debug', (req, res, next) => {
   try {
     const { includeDatabase, includeSettings, includeLogs } = req.body;

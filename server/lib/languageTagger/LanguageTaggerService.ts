@@ -94,6 +94,26 @@ function extractFilePaths(metadata: PlexMetadata): string[] {
   return paths;
 }
 
+/**
+ * Apply configured path mappings to translate a Plex-reported file path
+ * into the equivalent path inside the Docker container.
+ * e.g. /mnt/nas/movies/film.mkv → /media/movies/film.mkv
+ */
+function applyPathMappings(filePath: string): string {
+  const settings = getSettings();
+  const mappings = settings.mediaFolders?.pathMappings ?? [];
+  for (const { plexPath, localPath } of mappings) {
+    const prefix = plexPath.endsWith('/') ? plexPath : plexPath + '/';
+    if (filePath.startsWith(prefix)) {
+      const base = localPath.endsWith('/') ? localPath : localPath + '/';
+      return base + filePath.slice(prefix.length);
+    }
+    // exact match (no trailing slash)
+    if (filePath === plexPath) return localPath;
+  }
+  return filePath;
+}
+
 class LanguageTaggerService {
   private getRadarrApis(): RadarrAPI[] {
     const settings = getSettings();
@@ -219,7 +239,7 @@ class LanguageTaggerService {
     if (!(await isFfprobeAvailable())) return null;
     try {
       const metadata = await plexApi.getMetadata(ratingKey);
-      const paths = extractFilePaths(metadata);
+      const paths = extractFilePaths(metadata).map(applyPathMappings);
       if (!paths.length) return null;
 
       const langs = await getAudioLanguagesFromFile(paths[0]);
@@ -256,7 +276,7 @@ class LanguageTaggerService {
 
         for (const episode of episodes) {
           if (episode.type !== 'episode') continue;
-          const paths = extractFilePaths(episode);
+          const paths = extractFilePaths(episode).map(applyPathMappings);
           if (!paths.length) continue;
 
           const langs = await getAudioLanguagesFromFile(paths[0]);
