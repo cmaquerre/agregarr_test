@@ -11156,6 +11156,179 @@ paths:
                     timestamp:
                       type: string
                       example: '2020-12-15T16:20:00.069Z'
+  /settings/webhook-triggers:
+    get:
+      summary: Get webhook trigger settings
+      tags:
+        - settings-general
+      responses:
+        '200':
+          description: Webhook trigger settings
+          content:
+            application/json:
+              schema:
+                type: object
+    post:
+      summary: Save webhook trigger settings
+      tags:
+        - settings-general
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        '200':
+          description: Saved webhook trigger settings
+          content:
+            application/json:
+              schema:
+                type: object
+  /settings/webhook-triggers/regenerate-token:
+    post:
+      summary: Regenerate webhook token
+      tags:
+        - settings-general
+      responses:
+        '200':
+          description: New webhook token
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  webhookToken:
+                    type: string
+  /settings/webhook-triggers/queue:
+    get:
+      summary: Get overlay trigger queue status
+      tags:
+        - settings-general
+      responses:
+        '200':
+          description: Queue status
+          content:
+            application/json:
+              schema:
+                type: object
+  /settings/language-tagger:
+    get:
+      summary: Get language tagger settings
+      tags:
+        - settings-general
+      responses:
+        '200':
+          description: Language tagger settings
+          content:
+            application/json:
+              schema:
+                type: object
+    post:
+      summary: Save language tagger settings
+      tags:
+        - settings-general
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        '200':
+          description: Saved settings
+          content:
+            application/json:
+              schema:
+                type: object
+  /settings/language-tagger/records:
+    get:
+      summary: Get stored language tag records
+      tags:
+        - settings-general
+      parameters:
+        - in: query
+          name: mediaType
+          schema:
+            type: string
+        - in: query
+          name: tag
+          schema:
+            type: string
+        - in: query
+          name: limit
+          schema:
+            type: integer
+        - in: query
+          name: offset
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Language tag records
+          content:
+            application/json:
+              schema:
+                type: object
+  /settings/language-tagger/run:
+    post:
+      summary: Run language tagging on a library
+      tags:
+        - settings-general
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        '200':
+          description: Tagging result
+          content:
+            application/json:
+              schema:
+                type: object
+  /settings/media-folders:
+    get:
+      summary: Get media folder path mappings
+      tags:
+        - settings-general
+      responses:
+        '200':
+          description: Media folder settings
+          content:
+            application/json:
+              schema:
+                type: object
+    post:
+      summary: Save media folder path mappings
+      tags:
+        - settings-general
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        '200':
+          description: Saved settings
+          content:
+            application/json:
+              schema:
+                type: object
+  /settings/tags-overview:
+    get:
+      summary: Get tags overview (language + Radarr/Sonarr tags)
+      tags:
+        - settings-general
+      responses:
+        '200':
+          description: Tags overview
+          content:
+            application/json:
+              schema:
+                type: object
   /settings/export-debug:
     post:
       summary: Export debugging information
