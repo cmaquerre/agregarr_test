@@ -455,7 +455,8 @@ class LanguageTaggerService {
 
         try {
           if (mediaType === 'movie') {
-            let res = await this.fetchMovieTagFromRadarr(tmdbId);
+            let res: { tag: LanguageTag; source: string } | null =
+              await this.fetchMovieTagFromRadarr(tmdbId);
             if (!res) res = await this.fetchMovieTagFromFfprobe(item.ratingKey, plexApi);
 
             if (res) {
