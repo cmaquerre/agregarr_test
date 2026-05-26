@@ -151,7 +151,7 @@ class OverlayTriggerQueue {
         );
 
         if (item) {
-          await this.applyOverlaysToItem(item.ratingKey, config.libraryId);
+          // Tag first so languageTag is in DB when overlays are rendered
           await this.applyLanguageTagToItem(
             plexApi,
             item.ratingKey,
@@ -159,6 +159,7 @@ class OverlayTriggerQueue {
             tmdbId,
             mediaType
           );
+          await this.applyOverlaysToItem(item.ratingKey, config.libraryId);
           return; // Found and processed — stop searching other libraries
         }
       }
@@ -222,8 +223,6 @@ class OverlayTriggerQueue {
           ratingKey
         );
         if (item) {
-          await this.applyOverlaysToItem(ratingKey, config.libraryId);
-
           // Extract TMDB ID from Plex metadata GUIDs for language tagging
           const tmdbGuid = metadata.Guid?.find((g) =>
             g.id.startsWith('tmdb://')
@@ -231,6 +230,8 @@ class OverlayTriggerQueue {
           const tmdbId = tmdbGuid
             ? parseInt(tmdbGuid.id.replace('tmdb://', ''), 10)
             : null;
+
+          // Tag first so languageTag is in DB when overlays are rendered
           if (tmdbId && !isNaN(tmdbId)) {
             await this.applyLanguageTagToItem(
               plexApi,
@@ -241,6 +242,7 @@ class OverlayTriggerQueue {
             );
           }
 
+          await this.applyOverlaysToItem(ratingKey, config.libraryId);
           return;
         }
       }
