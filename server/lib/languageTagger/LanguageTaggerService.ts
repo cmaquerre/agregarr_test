@@ -8,7 +8,7 @@ import { getAdminUser } from '@server/lib/collections/core/CollectionUtilities';
 import { getSettings } from '@server/lib/settings';
 import logger from '@server/logger';
 import {
-  getAudioLanguagesFromFile,
+  getStreamLanguagesFromFile,
   isFfprobeAvailable,
 } from './FfprobeService';
 
@@ -49,12 +49,22 @@ function parseLanguageString(str: string): string[] {
     .filter(Boolean);
 }
 
-function detectTag(audioLanguages: string[]): LanguageTag {
-  if (audioLanguages.length === 0) return 'VOSTFR';
-  const hasFrench = audioLanguages.some(isFrench);
-  const hasOther = audioLanguages.some((l) => !isFrench(l));
-  if (hasFrench && !hasOther) return 'VF';
-  if (hasFrench && hasOther) return 'MULTI';
+/**
+ * Determine the language tag from audio tracks and optional subtitle tracks.
+ *
+ * Rules (in priority order):
+ *   MULTI   — French audio + at least one other-language audio track
+ *   VF      — French audio only (no other-language audio)
+ *   VOSTFR  — No French audio, but French subtitle track present
+ *   VOSTFR  — Fallback (no French audio, no French subs)
+ */
+function detectTag(audioLanguages: string[], subtitleLanguages: string[] = []): LanguageTag {
+  const hasFrenchAudio = audioLanguages.some(isFrench);
+  const hasOtherAudio  = audioLanguages.some((l) => !isFrench(l));
+  if (hasFrenchAudio && hasOtherAudio) return 'MULTI';
+  if (hasFrenchAudio) return 'VF';
+  // No French audio — VOSTFR whether or not French subs are present
+  // (VOSTFR = original version, potentially with French subtitles)
   return 'VOSTFR';
 }
 
@@ -72,21 +82,25 @@ function determineMajorityTag(tags: LanguageTag[]): LanguageTag {
   return 'VOSTFR';
 }
 
-/** Extract audio language codes from Plex Media.Part.Stream entries (streamType 2 = audio). */
+/**
+ * Extract audio and subtitle language codes from Plex Media.Part.Stream entries.
+ * streamType 2 = audio, streamType 3 = subtitle.
+ */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-function extractAudioLanguagesFromPlex(obj: any): string[] {
-  const langs = new Set<string>();
+function extractPlexStreamLanguages(obj: any): { audio: string[]; subtitles: string[] } {
+  const audio = new Set<string>();
+  const subtitles = new Set<string>();
   for (const media of obj?.Media ?? []) {
     for (const part of media?.Part ?? []) {
       for (const stream of part?.Stream ?? []) {
-        if (stream?.streamType === 2) {
-          const lang: string | undefined = stream.languageCode ?? stream.language;
-          if (lang?.trim()) langs.add(lang.toLowerCase().trim());
-        }
+        const lang: string | undefined = stream?.languageCode ?? stream?.language;
+        if (!lang?.trim()) continue;
+        if (stream.streamType === 2) audio.add(lang.toLowerCase().trim());
+        else if (stream.streamType === 3) subtitles.add(lang.toLowerCase().trim());
       }
     }
   }
-  return [...langs];
+  return { audio: [...audio], subtitles: [...subtitles] };
 }
 
 /** Extract file paths from Plex Part objects (episode or movie). */
@@ -331,9 +345,9 @@ class LanguageTaggerService {
   ): Promise<MovieTagEntry | null> {
     try {
       const metadata = await plexApi.getMetadata(ratingKey);
-      const langs = extractAudioLanguagesFromPlex(metadata);
-      if (!langs.length) return null;
-      return { tag: detectTag(langs), source: 'plex' };
+      const { audio, subtitles } = extractPlexStreamLanguages(metadata);
+      if (!audio.length && !subtitles.length) return null;
+      return { tag: detectTag(audio, subtitles), source: 'plex' };
     } catch {
       return null;
     }
@@ -355,9 +369,13 @@ class LanguageTaggerService {
         const episodes = await plexApi.getChildrenMetadata(season.ratingKey);
         const episodeTags = episodes
           .filter((ep) => ep.type === 'episode')
-          .map((ep) => extractAudioLanguagesFromPlex(ep))
-          .filter((langs) => langs.length > 0)
-          .map((langs) => detectTag(langs));
+          .map((ep) => {
+            const { audio, subtitles } = extractPlexStreamLanguages(ep);
+            return audio.length || subtitles.length
+              ? detectTag(audio, subtitles)
+              : null;
+          })
+          .filter((t): t is LanguageTag => t !== null);
 
         if (episodeTags.length) {
           seasonTags[seasonNumber] = determineMajorityTag(episodeTags);
@@ -391,10 +409,10 @@ class LanguageTaggerService {
       const paths = extractFilePaths(metadata).map(applyPathMappings);
       if (!paths.length) return null;
 
-      const langs = await getAudioLanguagesFromFile(paths[0]);
-      if (!langs.length) return null;
+      const { audio, subtitles } = await getStreamLanguagesFromFile(paths[0]);
+      if (!audio.length && !subtitles.length) return null;
 
-      return { tag: detectTag(langs), source: 'ffprobe' };
+      return { tag: detectTag(audio, subtitles), source: 'ffprobe' };
     } catch {
       return null;
     }
@@ -426,13 +444,13 @@ class LanguageTaggerService {
           .filter(Boolean) as string[];
 
         // Probe all episodes in the season concurrently
-        const langResults = await Promise.all(
-          episodeFiles.map((f) => getAudioLanguagesFromFile(f))
+        const streamResults = await Promise.all(
+          episodeFiles.map((f) => getStreamLanguagesFromFile(f))
         );
 
-        const episodeTags = langResults
-          .filter((langs) => langs.length > 0)
-          .map((langs) => detectTag(langs));
+        const episodeTags = streamResults
+          .filter(({ audio, subtitles }) => audio.length > 0 || subtitles.length > 0)
+          .map(({ audio, subtitles }) => detectTag(audio, subtitles));
 
         if (episodeTags.length) {
           seasonTags[seasonNumber] = determineMajorityTag(episodeTags);
@@ -531,8 +549,26 @@ class LanguageTaggerService {
         const tmdbId = tmdbGuid ? parseInt(tmdbGuid.id.replace('tmdb://', ''), 10) : NaN;
 
         if (isNaN(tmdbId)) {
-          result.skipped++;
-          result.items.push({ title: item.title, ratingKey: item.ratingKey, tag: null });
+          // No TMDB ID — fall back to Plex stream detection directly
+          try {
+            const plexEntry = mediaType === 'movie'
+              ? await this.fetchMovieTagFromPlex(item.ratingKey, plexApi)
+              : await this.fetchShowTagsFromPlex(item.ratingKey, plexApi);
+
+            if (plexEntry) {
+              const tag = 'tag' in plexEntry ? plexEntry.tag : plexEntry.seriesTag;
+              const seasonTags = 'seasonTags' in plexEntry ? plexEntry.seasonTags : undefined;
+              await this.saveRecord({ ratingKey: item.ratingKey, title: item.title, mediaType, tag, seasonTags, source: plexEntry.source });
+              result.tagged++;
+              result.items.push({ title: item.title, ratingKey: item.ratingKey, tag, source: plexEntry.source });
+            } else {
+              result.skipped++;
+              result.items.push({ title: item.title, ratingKey: item.ratingKey, tag: null });
+            }
+          } catch {
+            result.skipped++;
+            result.items.push({ title: item.title, ratingKey: item.ratingKey, tag: null });
+          }
           continue;
         }
 

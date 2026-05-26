@@ -10,6 +10,11 @@ interface FfprobeResult {
   streams: FfprobeStream[];
 }
 
+export interface StreamLanguages {
+  audio: string[];
+  subtitles: string[];
+}
+
 let ffprobeAvailableCache: boolean | null = null;
 
 export async function isFfprobeAvailable(): Promise<boolean> {
@@ -27,18 +32,15 @@ export async function isFfprobeAvailable(): Promise<boolean> {
   });
 }
 
-export async function getAudioLanguagesFromFile(
+/** Returns audio and subtitle language codes from a media file using ffprobe. */
+export async function getStreamLanguagesFromFile(
   filePath: string
-): Promise<string[]> {
+): Promise<StreamLanguages> {
   return new Promise((resolve) => {
     const proc = spawn('ffprobe', [
-      '-v',
-      'quiet',
-      '-print_format',
-      'json',
+      '-v', 'quiet',
+      '-print_format', 'json',
       '-show_streams',
-      '-select_streams',
-      'a',
       filePath,
     ]);
 
@@ -50,18 +52,22 @@ export async function getAudioLanguagesFromFile(
     proc.on('close', (code) => {
       clearTimeout(killTimer);
       if (code !== 0 || !stdout.trim()) {
-        resolve([]);
+        resolve({ audio: [], subtitles: [] });
         return;
       }
       try {
         const parsed: FfprobeResult = JSON.parse(stdout);
-        const langs = parsed.streams
+        const audio = parsed.streams
           .filter((s) => s.codec_type === 'audio')
           .map((s) => s.tags?.language ?? '')
           .filter(Boolean);
-        resolve(langs);
+        const subtitles = parsed.streams
+          .filter((s) => s.codec_type === 'subtitle')
+          .map((s) => s.tags?.language ?? '')
+          .filter(Boolean);
+        resolve({ audio, subtitles });
       } catch {
-        resolve([]);
+        resolve({ audio: [], subtitles: [] });
       }
     });
 
@@ -72,12 +78,20 @@ export async function getAudioLanguagesFromFile(
         error: err.message,
         filePath,
       });
-      resolve([]);
+      resolve({ audio: [], subtitles: [] });
     });
 
     killTimer = setTimeout(() => {
       try { proc.kill(); } catch {}
-      resolve([]);
+      resolve({ audio: [], subtitles: [] });
     }, 30_000);
   });
+}
+
+/** @deprecated Use getStreamLanguagesFromFile instead. */
+export async function getAudioLanguagesFromFile(
+  filePath: string
+): Promise<string[]> {
+  const { audio } = await getStreamLanguagesFromFile(filePath);
+  return audio;
 }
