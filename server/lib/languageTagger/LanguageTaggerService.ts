@@ -180,16 +180,28 @@ class LanguageTaggerService {
         if (season.type !== 'season') continue;
         const seasonNumber = season.index ?? 0;
 
-        const episodes = await plexApi.getChildrenMetadata(season.ratingKey);
-        const episodeTags = episodes
+        // getChildrenMetadata does not include Stream data for episodes —
+        // we must call getMetadata per episode to get language info.
+        // Sample the first 3 episodes per season to keep API calls bounded
+        // while still producing a reliable tag (language is season-consistent).
+        const episodeList = await plexApi.getChildrenMetadata(season.ratingKey);
+        const sampleKeys = episodeList
           .filter((ep) => ep.type === 'episode')
-          .map((ep) => {
-            const { audio, subtitles } = extractPlexStreamLanguages(ep);
-            return audio.length || subtitles.length
-              ? detectTag(audio, subtitles)
-              : null;
-          })
-          .filter((t): t is LanguageTag => t !== null);
+          .slice(0, 3)
+          .map((ep) => ep.ratingKey);
+
+        const episodeTags: LanguageTag[] = [];
+        for (const key of sampleKeys) {
+          try {
+            const fullMeta = await plexApi.getMetadata(key);
+            const { audio, subtitles } = extractPlexStreamLanguages(fullMeta);
+            if (audio.length || subtitles.length) {
+              episodeTags.push(detectTag(audio, subtitles));
+            }
+          } catch {
+            // skip this episode
+          }
+        }
 
         if (episodeTags.length) {
           seasonTags[seasonNumber] = determineMajorityTag(episodeTags);
@@ -247,11 +259,24 @@ class LanguageTaggerService {
         if (season.type !== 'season') continue;
         const seasonNumber = season.index ?? 0;
 
-        const episodes = await plexApi.getChildrenMetadata(season.ratingKey);
-        const episodeFiles = episodes
+        // Same as the Plex path: getChildrenMetadata doesn't include Media.Part.file,
+        // so we fetch full metadata for the first 3 episodes to get file paths.
+        const episodeList = await plexApi.getChildrenMetadata(season.ratingKey);
+        const sampleKeys = episodeList
           .filter((ep) => ep.type === 'episode')
-          .map((ep) => extractFilePaths(ep as unknown as PlexMetadata).map(applyPathMappings)[0])
-          .filter(Boolean) as string[];
+          .slice(0, 3)
+          .map((ep) => ep.ratingKey);
+
+        const episodeFiles: string[] = [];
+        for (const key of sampleKeys) {
+          try {
+            const fullMeta = await plexApi.getMetadata(key);
+            const file = extractFilePaths(fullMeta).map(applyPathMappings)[0];
+            if (file) episodeFiles.push(file);
+          } catch {
+            // skip
+          }
+        }
 
         const streamResults = await Promise.all(
           episodeFiles.map((f) => getStreamLanguagesFromFile(f))
