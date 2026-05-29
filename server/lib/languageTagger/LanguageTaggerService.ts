@@ -426,6 +426,17 @@ class LanguageTaggerService {
     return result;
   }
 
+  async clearRecords(): Promise<{ deleted: number }> {
+    const repo = getRepository(LanguageTagRecord);
+    const all = await repo.find();
+    await repo.remove(all);
+    logger.info('LanguageTagger: all records cleared', {
+      label: 'LanguageTagger',
+      deleted: all.length,
+    });
+    return { deleted: all.length };
+  }
+
   async getRecords(params?: {
     mediaType?: string;
     tag?: string;

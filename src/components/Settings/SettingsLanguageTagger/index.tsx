@@ -1,6 +1,6 @@
 import Button from '@app/components/Common/Button';
 import { LANGUAGE_TAG_COLORS } from '@app/utils/languageTagColors';
-import { ArrowPathIcon, PlayIcon } from '@heroicons/react/24/outline';
+import { ArrowPathIcon, PlayIcon, TrashIcon } from '@heroicons/react/24/outline';
 import axios from 'axios';
 import { useEffect, useState } from 'react';
 import { defineMessages, useIntl } from 'react-intl';
@@ -41,6 +41,11 @@ const messages = defineMessages({
   sourceSonarr: 'Sonarr',
   sourceFfprobe: 'ffprobe',
   total: '{count} records',
+  clearAll: 'Clear All',
+  clearAllConfirm:
+    'This will delete all {count} stored language tags. You will need to re-run the scan to rebuild them. Continue?',
+  clearAllSuccess: 'Deleted {deleted} records',
+  clearAllError: 'Failed to clear records',
 });
 
 interface PlexLibrary {
@@ -107,6 +112,7 @@ const SettingsLanguageTagger: React.FC = () => {
   const [runResults, setRunResults] = useState<Record<string, TaggingResult>>(
     {}
   );
+  const [clearing, setClearing] = useState(false);
   const [tagFilter, setTagFilter] = useState<string>('');
   const [recordsPage, setRecordsPage] = useState(0);
 
@@ -170,6 +176,36 @@ const SettingsLanguageTagger: React.FC = () => {
       });
     } finally {
       setRunningLibrary(null);
+    }
+  };
+
+  const handleClearAll = async () => {
+    const count = recordsData?.total ?? 0;
+    if (
+      !window.confirm(
+        intl.formatMessage(messages.clearAllConfirm, { count })
+      )
+    )
+      return;
+    setClearing(true);
+    try {
+      const res = await axios.delete<{ deleted: number }>(
+        '/api/v1/settings/language-tagger/records'
+      );
+      await mutateRecords();
+      addToast(
+        intl.formatMessage(messages.clearAllSuccess, {
+          deleted: res.data.deleted,
+        }),
+        { appearance: 'success', autoDismiss: true }
+      );
+    } catch {
+      addToast(intl.formatMessage(messages.clearAllError), {
+        appearance: 'error',
+        autoDismiss: true,
+      });
+    } finally {
+      setClearing(false);
     }
   };
 
@@ -383,6 +419,14 @@ const SettingsLanguageTagger: React.FC = () => {
                 </button>
               ))}
             </div>
+            <button
+              onClick={handleClearAll}
+              disabled={clearing || !recordsData?.total}
+              className="text-stone-400 hover:text-red-400 disabled:opacity-40"
+              title={intl.formatMessage(messages.clearAll)}
+            >
+              <TrashIcon className="h-4 w-4" />
+            </button>
             <button
               onClick={() => mutateRecords()}
               className="text-stone-400 hover:text-white"

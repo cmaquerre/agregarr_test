@@ -1552,6 +1552,18 @@ settingsRoutes.get('/language-tagger/records', async (req, res, next) => {
   }
 });
 
+settingsRoutes.delete('/language-tagger/records', async (_req, res, next) => {
+  try {
+    const { languageTaggerService } = await import(
+      '@server/lib/languageTagger/LanguageTaggerService'
+    );
+    const result = await languageTaggerService.clearRecords();
+    return res.status(200).json(result);
+  } catch (e) {
+    return next(e);
+  }
+});
+
 settingsRoutes.post('/language-tagger/run', async (req, res, next) => {
   try {
     const { libraryId, mediaType } = req.body as {

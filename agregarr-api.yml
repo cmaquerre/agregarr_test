@@ -11270,6 +11270,17 @@ paths:
             application/json:
               schema:
                 type: object
+    delete:
+      summary: Delete all stored language tag records
+      tags:
+        - settings-general
+      responses:
+        '200':
+          description: Number of deleted records
+          content:
+            application/json:
+              schema:
+                type: object
   /settings/language-tagger/run:
     post:
       summary: Run language tagging on a library
