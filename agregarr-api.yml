@@ -15802,6 +15802,27 @@ paths:
         '401':
           description: Authentication required
 
+  /overlay-settings/force-resync:
+    post:
+      summary: Force resync all overlays from original posters
+      description: Triggers a full overlay sync that bypasses hash caching and re-renders every item from its clean base poster. Useful after changing templates or after a language tagger rescan.
+      tags:
+        - overlays
+      responses:
+        '202':
+          description: Force resync started
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+        '409':
+          description: Overlay sync already running
+        '401':
+          description: Authentication required
+
   /overlay-settings/generate-local-folders:
     post:
       summary: Generate local poster folder structure

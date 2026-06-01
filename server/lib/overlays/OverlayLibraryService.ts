@@ -166,7 +166,8 @@ class OverlayLibraryService {
    */
   async applyOverlaysToLibrary(
     libraryId: string,
-    checkCancelled?: () => boolean
+    checkCancelled?: () => boolean,
+    forceResync?: boolean
   ): Promise<void> {
     // Check if library is already being processed (mutex check)
     // Reject duplicate requests to prevent corruption and match API layer behavior
@@ -423,7 +424,8 @@ class OverlayLibraryService {
             libraryId,
             config.libraryName,
             undefined,
-            applyToSeasons
+            applyToSeasons,
+            forceResync
           );
           successCount++;
         } catch (error) {
@@ -644,7 +646,8 @@ class OverlayLibraryService {
     libraryId: string,
     libraryName: string,
     contextOverrides?: Partial<OverlayRenderContext>,
-    applyToSeasons?: boolean
+    applyToSeasons?: boolean,
+    forceResync?: boolean
   ): Promise<void> {
     try {
       // CRITICAL: Derive actual media type from item.type, not library config
@@ -933,6 +936,7 @@ class OverlayLibraryService {
           metadata?.basePosterSource !== posterSource;
 
         if (
+          !forceResync &&
           !overlayInputsChanged &&
           !plexPosterMissing &&
           !basePosterSourceChanged
@@ -1173,7 +1177,8 @@ class OverlayLibraryService {
           context,
           templates,
           libraryId,
-          tmdbId
+          tmdbId,
+          forceResync
         );
       }
     } catch (error) {
@@ -1199,7 +1204,8 @@ class OverlayLibraryService {
     showContext: OverlayRenderContext,
     templates: OverlayTemplate[],
     libraryId: string,
-    showTmdbId: number
+    showTmdbId: number,
+    forceResync?: boolean
   ): Promise<void> {
     let seasons: PlexMetadata[];
 
@@ -1313,6 +1319,7 @@ class OverlayLibraryService {
           seasonMetadata?.basePosterSource !== posterSource;
 
         if (
+          !forceResync &&
           seasonMetadata?.lastOverlayInputHash === overlayInputHash &&
           !plexPosterMissing &&
           !basePosterSourceChanged

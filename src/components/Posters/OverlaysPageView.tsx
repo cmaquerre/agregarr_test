@@ -3,6 +3,7 @@ import Button from '@app/components/Common/Button';
 import LoadingSpinner from '@app/components/Common/LoadingSpinner';
 import { OverlayEditorModal } from '@app/components/OverlayEditor';
 import {
+  ArrowPathIcon,
   ArrowUpTrayIcon,
   BeakerIcon,
   Cog6ToothIcon,
@@ -47,6 +48,10 @@ const messages = defineMessages({
   overlaySyncQueued:
     'Per-library syncs are running. Full sync will start when they complete.',
   overlaySyncError: 'Failed to start overlay sync',
+  forceResync: 'Reset & Resync All',
+  forceResyncConfirm: 'Confirm Reset & Resync?',
+  forceResyncStarted: 'Force resync started — all posters will be regenerated from originals',
+  forceResyncError: 'Failed to start force resync',
   testItem: 'Test Item',
   allTags: 'All',
 });
@@ -78,6 +83,8 @@ const OverlaysPageView: React.FC = () => {
   const [isSetupModalOpen, setIsSetupModalOpen] = useState(false);
   const [isTestModalOpen, setIsTestModalOpen] = useState(false);
   const [fullSyncConfirmClicked, setFullSyncConfirmClicked] = useState(false);
+  const [forceResyncConfirmClicked, setForceResyncConfirmClicked] = useState(false);
+  const forceResyncConfirmTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const [selectedTag, setSelectedTag] = useState<string | null>(null);
   const [gridSize, setGridSize] = useState<'xs' | 'small' | 'medium' | 'large'>(
     () => {
@@ -325,6 +332,32 @@ const OverlaysPageView: React.FC = () => {
     }
   };
 
+  const handleForceResync = async () => {
+    if (!forceResyncConfirmClicked) {
+      setForceResyncConfirmClicked(true);
+      forceResyncConfirmTimeoutRef.current = setTimeout(() => {
+        setForceResyncConfirmClicked(false);
+      }, 3000);
+      return;
+    }
+    if (forceResyncConfirmTimeoutRef.current) {
+      clearTimeout(forceResyncConfirmTimeoutRef.current);
+    }
+    setForceResyncConfirmClicked(false);
+    try {
+      await axios.post('/api/v1/overlay-settings/force-resync');
+      addToast(intl.formatMessage(messages.forceResyncStarted), {
+        appearance: 'success',
+        autoDismiss: true,
+      });
+    } catch {
+      addToast(intl.formatMessage(messages.forceResyncError), {
+        appearance: 'error',
+        autoDismiss: true,
+      });
+    }
+  };
+
   const tabs: {
     key: TabKey;
     name: string;
@@ -494,6 +527,24 @@ const OverlaysPageView: React.FC = () => {
                 {fullSyncConfirmClicked
                   ? intl.formatMessage(messages.fullOverlaysSyncConfirm)
                   : intl.formatMessage(messages.fullOverlaysSync)}
+              </span>
+            </Button>
+            <Button
+              buttonType={forceResyncConfirmClicked ? 'danger' : 'default'}
+              onClick={handleForceResync}
+              disabled={isOverlaySyncRunning}
+              className="flex items-center space-x-2"
+              title="Reset all posters to originals and re-apply overlays from scratch"
+            >
+              {forceResyncConfirmClicked ? (
+                <ExclamationTriangleIcon className="h-4 w-4" />
+              ) : (
+                <ArrowPathIcon className="h-4 w-4" />
+              )}
+              <span>
+                {forceResyncConfirmClicked
+                  ? intl.formatMessage(messages.forceResyncConfirm)
+                  : intl.formatMessage(messages.forceResync)}
               </span>
             </Button>
           </div>

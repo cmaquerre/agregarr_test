@@ -54,7 +54,7 @@ class OverlayApplication {
     });
   }
 
-  public async run(): Promise<void> {
+  public async run(forceResync?: boolean): Promise<void> {
     if (this.running) {
       logger.warn('Overlay application is already running', {
         label: 'Overlay Application',
@@ -183,7 +183,8 @@ class OverlayApplication {
 
           await overlayLibraryService.applyOverlaysToLibrary(
             config.libraryId,
-            () => this.cancelled
+            () => this.cancelled,
+            forceResync
           );
 
           processed++;

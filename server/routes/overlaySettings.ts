@@ -290,4 +290,22 @@ router.post(
   }
 );
 
+/**
+ * POST /api/v1/overlay-settings/force-resync
+ * Trigger a full overlay sync that bypasses hash caching and re-renders
+ * every item from its clean base poster. Useful after changing templates
+ * or after a language tagger rescan.
+ */
+router.post('/force-resync', isAuthenticated(), async (_req, res) => {
+  if (overlayApplication.running) {
+    return res.status(409).json({ error: 'Overlay sync already running' });
+  }
+
+  overlayApplication.run(true).catch(() => {
+    // Error already logged in the job
+  });
+
+  return res.status(202).json({ message: 'Force resync started' });
+});
+
 export default router;
