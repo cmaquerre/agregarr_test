@@ -1,9 +1,7 @@
-version: '3'
 services:
   agregarr:
-    build:
-      context: .
-      dockerfile: Dockerfile
+    image: ghcr.io/cmaquerre/agregarr_test:develop
+    pull_policy: always
     ports:
       - 7173:7171
     environment:
