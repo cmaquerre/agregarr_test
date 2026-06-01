@@ -117,9 +117,12 @@ function applyPathMappings(filePath: string): string {
 }
 
 type MovieTagEntry = { tag: LanguageTag; source: 'plex' | 'ffprobe' };
+
+/** seasonRatingKeys maps season number → Plex ratingKey for per-season record storage. */
 type ShowTagEntry = {
   seriesTag: LanguageTag;
   seasonTags: Record<number, LanguageTag>;
+  seasonRatingKeys: Record<number, string>;
   source: 'plex' | 'ffprobe';
 };
 
@@ -149,6 +152,29 @@ class LanguageTaggerService {
     await repo.save(record);
   }
 
+  /** Save one record per season so overlays can resolve per-season language tags by ratingKey. */
+  private async saveSeasonRecords(
+    showTitle: string,
+    tmdbId: number | undefined,
+    seasonTags: Record<number, LanguageTag>,
+    seasonRatingKeys: Record<number, string>,
+    source: string
+  ): Promise<void> {
+    for (const [seasonNumberStr, tag] of Object.entries(seasonTags)) {
+      const seasonNumber = parseInt(seasonNumberStr, 10);
+      const seasonRatingKey = seasonRatingKeys[seasonNumber];
+      if (!seasonRatingKey) continue;
+      await this.saveRecord({
+        ratingKey: seasonRatingKey,
+        title: `${showTitle} — S${String(seasonNumber).padStart(2, '0')}`,
+        mediaType: 'season',
+        tmdbId,
+        tag,
+        source,
+      });
+    }
+  }
+
   // ---------------------------------------------------------------------------
   // Plex stream detection
   // ---------------------------------------------------------------------------
@@ -174,16 +200,17 @@ class LanguageTaggerService {
     try {
       const seasons = await plexApi.getChildrenMetadata(showRatingKey);
       const seasonTags: Record<number, LanguageTag> = {};
+      const seasonRatingKeys: Record<number, string> = {};
       let anyTag = false;
 
       for (const season of seasons) {
         if (season.type !== 'season') continue;
         const seasonNumber = season.index ?? 0;
+        seasonRatingKeys[seasonNumber] = season.ratingKey;
 
         // getChildrenMetadata does not include Stream data for episodes —
-        // we must call getMetadata per episode to get language info.
-        // Sample the first 3 episodes per season to keep API calls bounded
-        // while still producing a reliable tag (language is season-consistent).
+        // call getMetadata per episode to get language info.
+        // Sample the first 3 episodes per season to keep API calls bounded.
         const episodeList = await plexApi.getChildrenMetadata(season.ratingKey);
         const sampleKeys = episodeList
           .filter((ep) => ep.type === 'episode')
@@ -214,6 +241,7 @@ class LanguageTaggerService {
       return {
         seriesTag: determineMajorityTag(Object.values(seasonTags)),
         seasonTags,
+        seasonRatingKeys,
         source: 'plex',
       };
     } catch {
@@ -253,14 +281,14 @@ class LanguageTaggerService {
     try {
       const seasons = await plexApi.getChildrenMetadata(showRatingKey);
       const seasonTags: Record<number, LanguageTag> = {};
+      const seasonRatingKeys: Record<number, string> = {};
       let anyTag = false;
 
       for (const season of seasons) {
         if (season.type !== 'season') continue;
         const seasonNumber = season.index ?? 0;
+        seasonRatingKeys[seasonNumber] = season.ratingKey;
 
-        // Same as the Plex path: getChildrenMetadata doesn't include Media.Part.file,
-        // so we fetch full metadata for the first 3 episodes to get file paths.
         const episodeList = await plexApi.getChildrenMetadata(season.ratingKey);
         const sampleKeys = episodeList
           .filter((ep) => ep.type === 'episode')
@@ -297,6 +325,7 @@ class LanguageTaggerService {
       return {
         seriesTag: determineMajorityTag(Object.values(seasonTags) as LanguageTag[]),
         seasonTags,
+        seasonRatingKeys,
         source: 'ffprobe',
       };
     } catch (e) {
@@ -351,6 +380,7 @@ class LanguageTaggerService {
         seasonTags: result.seasonTags,
         source: result.source,
       });
+      await this.saveSeasonRecords(title, tmdbId, result.seasonTags, result.seasonRatingKeys, result.source);
       logger.info('LanguageTagger: tagged show', { label: 'LanguageTagger', title, tag: result.seriesTag, source: result.source });
     } else {
       logger.debug('LanguageTagger: no language info found for show', { label: 'LanguageTagger', title, tmdbId });
@@ -362,8 +392,22 @@ class LanguageTaggerService {
     libraryId: string,
     mediaType: 'movie' | 'show'
   ): Promise<TaggingResult> {
-    const result: TaggingResult = { tagged: 0, skipped: 0, errors: 0, items: [] };
+    // Clear existing records for this media type (and season records for shows)
+    // so stale entries from previous scans don't linger.
+    const repo = getRepository(LanguageTagRecord);
+    const typesToClear = mediaType === 'show' ? ['show', 'season'] : ['movie'];
+    await repo
+      .createQueryBuilder()
+      .delete()
+      .where('mediaType IN (:...types)', { types: typesToClear })
+      .execute();
+    logger.info('LanguageTagger: cleared records before scan', {
+      label: 'LanguageTagger',
+      mediaType,
+      typesToClear,
+    });
 
+    const result: TaggingResult = { tagged: 0, skipped: 0, errors: 0, items: [] };
     let offset = 0;
     const pageSize = 50;
 
@@ -378,6 +422,7 @@ class LanguageTaggerService {
           let tag: LanguageTag | null = null;
           let source: string | undefined;
           let seasonTags: Record<number, LanguageTag> | undefined;
+          let seasonRatingKeys: Record<number, string> | undefined;
 
           if (mediaType === 'movie') {
             const entry =
@@ -388,11 +433,19 @@ class LanguageTaggerService {
             const entry =
               (await this.fetchShowTagsFromPlex(item.ratingKey, plexApi)) ??
               (await this.fetchShowTagsFromFfprobe(item.ratingKey, plexApi));
-            if (entry) { tag = entry.seriesTag; source = entry.source; seasonTags = entry.seasonTags; }
+            if (entry) {
+              tag = entry.seriesTag;
+              source = entry.source;
+              seasonTags = entry.seasonTags;
+              seasonRatingKeys = entry.seasonRatingKeys;
+            }
           }
 
           if (tag) {
             await this.saveRecord({ ratingKey: item.ratingKey, title: item.title, mediaType, tmdbId, tag, seasonTags, source: source! });
+            if (seasonTags && seasonRatingKeys) {
+              await this.saveSeasonRecords(item.title, tmdbId, seasonTags, seasonRatingKeys, source!);
+            }
             result.tagged++;
             result.items.push({ title: item.title, ratingKey: item.ratingKey, tag, source });
           } else {
@@ -444,7 +497,11 @@ class LanguageTaggerService {
     offset?: number;
   }): Promise<{ records: LanguageTagRecord[]; total: number }> {
     const repo = getRepository(LanguageTagRecord);
-    const qb = repo.createQueryBuilder('r').orderBy('r.updatedAt', 'DESC');
+    const qb = repo
+      .createQueryBuilder('r')
+      // Exclude season records from the UI list — they are implementation detail
+      .where('r.mediaType != :season', { season: 'season' })
+      .orderBy('r.updatedAt', 'DESC');
 
     if (params?.mediaType) qb.andWhere('r.mediaType = :mt', { mt: params.mediaType });
     if (params?.tag) qb.andWhere('r.tag = :tag', { tag: params.tag });

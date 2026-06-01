@@ -1236,10 +1236,27 @@ class OverlayLibraryService {
         const seasonNumber = season.index ?? 0;
         const seasonRatingKey = season.ratingKey;
 
-        // Build season-specific context inheriting from parent show
+        // Build season-specific context inheriting from parent show.
+        // Override languageTag with the per-season record if available —
+        // the language tagger stores a season record keyed by season ratingKey.
+        let seasonLanguageTag = showContext.languageTag;
+        try {
+          const { getRepository: getRepo } = await import('@server/datasource');
+          const { LanguageTagRecord } = await import('@server/entity/LanguageTagRecord');
+          const seasonRecord = await getRepo(LanguageTagRecord).findOne({
+            where: { ratingKey: seasonRatingKey },
+          });
+          if (seasonRecord?.tag) {
+            seasonLanguageTag = seasonRecord.tag as typeof showContext.languageTag;
+          }
+        } catch {
+          // non-fatal — fall back to series-level tag
+        }
+
         const seasonContext: OverlayRenderContext = {
           ...showContext,
           seasonNumber,
+          languageTag: seasonLanguageTag,
         };
 
         // Filter templates by conditions using the season context
