@@ -525,14 +525,6 @@ class OverlayTemplateRendererService {
     try {
       const elements = templateData.elements;
 
-      // Check if all required variables are available
-      if (!this.hasRequiredVariables(elements, context)) {
-        logger.debug('Skipping overlay - required data not available', {
-          label: 'OverlayRenderer',
-        });
-        return null;
-      }
-
       // Calculate scale factors from template canvas to actual poster
       // Use uniform scaling to prevent overlay drift on non-standard aspect ratios
       const scaleX = posterWidth / templateData.width;
@@ -1005,8 +997,12 @@ class OverlayTemplateRendererService {
         // Variable segment - look up value in context
         const variableValue = context[segment.field];
 
-        // If any variable has no value, don't render this element (partial rendering)
+        // If any variable has no value, skip this element (partial rendering — other elements still render)
         if (variableValue === undefined || variableValue === null) {
+          logger.debug('Skipping variable element — value not available', {
+            label: 'OverlayRenderer',
+            field: segment.field,
+          });
           return null;
         }
 
