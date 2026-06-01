@@ -895,6 +895,7 @@ class OverlayLibraryService {
           inSonarr: context.inSonarr,
           daysAgo: context.daysAgo,
           isPlaceholder: context.isPlaceholder,
+          languageTag: context.languageTag,
         },
       });
 
