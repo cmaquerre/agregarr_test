@@ -711,6 +711,8 @@ class PlexBasePosterManager {
       originalPlexPosterUrl?: string;
       ourOverlayPosterUrl?: string;
       basePosterFilename?: string;
+      /** When true, bypass all cache/URL checks and download fresh from TMDB */
+      forceRefresh?: boolean;
       localPosterModifiedTime?: number;
     },
     tmdbId?: number
@@ -739,6 +741,45 @@ class PlexBasePosterManager {
         libraryConfigType: configuredLibraryType,
         usingType: mediaType,
       });
+    }
+
+    // ===== FORCE REFRESH =====
+    // Bypass all cache/URL checks and download a fresh poster from TMDB.
+    // Used during forceResync after the cached base poster file has been deleted.
+    if (metadata.forceRefresh) {
+      let resolvedTmdbId = tmdbId;
+      if (!resolvedTmdbId && item.Guid) {
+        const tmdbGuid = item.Guid.find((g) => g.id?.includes('tmdb://'));
+        if (tmdbGuid) {
+          const match = tmdbGuid.id.match(/tmdb:\/\/(\d+)/);
+          if (match) resolvedTmdbId = parseInt(match[1]);
+        }
+      }
+
+      if (resolvedTmdbId) {
+        const { getTmdbLanguage } = await import('@server/lib/settings');
+        const language = await getTmdbLanguage(libraryId);
+        const posterUrl = await this.getTmdbPosterUrl(resolvedTmdbId, mediaType, language);
+        if (posterUrl) {
+          logger.debug('Force refresh: downloading fresh TMDB poster', {
+            label: 'PlexBasePosterManager',
+            itemTitle: item.title,
+            ratingKey: item.ratingKey,
+          });
+          const cachedPoster = await this.getTmdbCachedPoster(posterUrl);
+          const posterBuffer = cachedPoster ?? await this.downloadFromTMDB(posterUrl);
+          if (!cachedPoster) await this.storeTmdbCachedPoster(posterUrl, posterBuffer);
+          const filename = await this.storeBasePoster(posterBuffer, libraryId, item.ratingKey);
+          return { posterBuffer, basePosterChanged: true, sourceUrl: posterUrl, filename };
+        }
+      }
+
+      logger.warn('Force refresh: no TMDB poster available, falling through to normal logic', {
+        label: 'PlexBasePosterManager',
+        itemTitle: item.title,
+        ratingKey: item.ratingKey,
+      });
+      // Fall through to normal logic if TMDB unavailable
     }
 
     if (posterSource === 'local') {

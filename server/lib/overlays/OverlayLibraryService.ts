@@ -1009,6 +1009,7 @@ class OverlayLibraryService {
             ourOverlayPosterUrl: metadata?.ourOverlayPosterUrl,
             basePosterFilename: metadata?.basePosterFilename,
             localPosterModifiedTime: metadata?.localPosterModifiedTime,
+            forceRefresh: forceResync,
           },
           tmdbId
         );
