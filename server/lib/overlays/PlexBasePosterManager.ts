@@ -482,6 +482,27 @@ class PlexBasePosterManager {
   }
 
   /**
+   * Delete the cached base poster for an item.
+   * Used during force resync to ensure a fresh download from TMDB/Plex.
+   */
+  async deleteStoredBasePoster(
+    libraryId: string,
+    ratingKey: string
+  ): Promise<void> {
+    const filepath = this.getFilePath(libraryId, ratingKey);
+    try {
+      await fs.unlink(filepath);
+      logger.debug('Deleted cached base poster', {
+        label: 'PlexBasePosterManager',
+        libraryId,
+        ratingKey,
+      });
+    } catch {
+      // File may not exist — that's fine
+    }
+  }
+
+  /**
    * Build folder path for local poster storage
    * Format: /config/plex-base-posters/{libraryName}-{libraryId}/{title} ({year}) tmdb-{tmdbId}/
    */

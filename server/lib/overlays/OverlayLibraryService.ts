@@ -980,6 +980,13 @@ class OverlayLibraryService {
         '@server/lib/overlays/PlexBasePosterManager'
       );
 
+      // Force resync: delete cached base poster so the next call re-downloads
+      // a clean version from TMDB/Plex instead of using a potentially stale
+      // (previously-overlaid) cached file.
+      if (forceResync) {
+        await plexBasePosterManager.deleteStoredBasePoster(libraryId, item.ratingKey);
+      }
+
       let basePosterResult: {
         posterBuffer: Buffer;
         basePosterChanged: boolean;
@@ -1332,6 +1339,11 @@ class OverlayLibraryService {
             seasonNumber,
           });
           continue;
+        }
+
+        // Force resync: delete cached base poster for this season too
+        if (forceResync) {
+          await plexBasePosterManager.deleteStoredBasePoster(libraryId, seasonRatingKey);
         }
 
         // Get season poster buffer
