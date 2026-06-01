@@ -224,7 +224,7 @@ class OverlayLibraryService {
       }
 
       // Process the library
-      await this.processLibraryOverlays(libraryId, config, checkCancelled);
+      await this.processLibraryOverlays(libraryId, config, checkCancelled, forceResync);
       resolveDeferred();
     } catch (error) {
       rejectDeferred(error instanceof Error ? error : new Error(String(error)));
@@ -241,7 +241,8 @@ class OverlayLibraryService {
   private async processLibraryOverlays(
     libraryId: string,
     config: OverlayLibraryConfig | null,
-    checkCancelled?: () => boolean
+    checkCancelled?: () => boolean,
+    forceResync?: boolean
   ): Promise<void> {
     try {
       // Clear library caches at start of job
