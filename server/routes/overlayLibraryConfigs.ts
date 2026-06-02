@@ -288,7 +288,7 @@ router.post('/:libraryId/apply-items', async (req, res, next) => {
     }
 
     const { libraryId } = req.params;
-    const { ratingKey } = req.body;
+    const { ratingKey, forceResync } = req.body as { ratingKey?: string; forceResync?: boolean };
 
     if (!ratingKey || typeof ratingKey !== 'string') {
       return res.status(400).json({
@@ -324,7 +324,7 @@ router.post('/:libraryId/apply-items', async (req, res, next) => {
 
     // Start async overlay application for single item
     overlayLibraryService
-      .applyOverlaysToCollectionItems([ratingKey], libraryId)
+      .applyOverlaysToCollectionItems([ratingKey], libraryId, forceResync)
       .catch((error: unknown) => {
         logger.error('Single item overlay application failed', {
           libraryId,

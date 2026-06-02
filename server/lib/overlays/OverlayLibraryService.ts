@@ -468,7 +468,8 @@ class OverlayLibraryService {
    */
   async applyOverlaysToCollectionItems(
     items: string[] | OverlayItemInput[],
-    libraryId: string
+    libraryId: string,
+    forceResync?: boolean
   ): Promise<void> {
     try {
       // Clear library caches at start of job
@@ -597,6 +598,13 @@ class OverlayLibraryService {
                 .editionTitle,
             } as PlexLibraryItem;
 
+            if (forceResync) {
+              const { plexBasePosterManager } = await import(
+                '@server/lib/overlays/PlexBasePosterManager'
+              );
+              await plexBasePosterManager.deleteStoredBasePoster(libraryId, ratingKey);
+            }
+
             await this.applyOverlaysToItem(
               plexApi,
               item,
@@ -604,7 +612,9 @@ class OverlayLibraryService {
               mediaType,
               libraryId,
               config.libraryName,
-              contextOverrides
+              contextOverrides,
+              config.applyToSeasons ?? false,
+              forceResync
             );
             successCount++;
           }

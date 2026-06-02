@@ -1,6 +1,6 @@
 import Button from '@app/components/Common/Button';
 import { LANGUAGE_TAG_COLORS } from '@app/utils/languageTagColors';
-import { ArrowPathIcon, PlayIcon, TrashIcon } from '@heroicons/react/24/outline';
+import { ArrowPathIcon, PlayIcon, TrashIcon, FilmIcon } from '@heroicons/react/24/outline';
 import axios from 'axios';
 import { useEffect, useState } from 'react';
 import { defineMessages, useIntl } from 'react-intl';
@@ -41,6 +41,10 @@ const messages = defineMessages({
   sourceSonarr: 'Sonarr',
   sourceFfprobe: 'ffprobe',
   total: '{count} records',
+  regenerate: 'Regenerate overlay',
+  regenerating: 'Regenerating…',
+  regenerateSuccess: 'Overlay regeneration started for {title}',
+  regenerateError: 'Failed to start regeneration',
   clearAll: 'Clear All',
   clearAllConfirm:
     'This will delete all {count} stored language tags. You will need to re-run the scan to rebuild them. Continue?',
@@ -113,6 +117,7 @@ const SettingsLanguageTagger: React.FC = () => {
     {}
   );
   const [clearing, setClearing] = useState(false);
+  const [regeneratingKey, setRegeneratingKey] = useState<string | null>(null);
   const [tagFilter, setTagFilter] = useState<string>('');
   const [recordsPage, setRecordsPage] = useState(0);
 
@@ -176,6 +181,27 @@ const SettingsLanguageTagger: React.FC = () => {
       });
     } finally {
       setRunningLibrary(null);
+    }
+  };
+
+  const handleRegenerate = async (record: TagRecord) => {
+    setRegeneratingKey(record.ratingKey);
+    try {
+      await axios.post('/api/v1/overlay-settings/regenerate-item', {
+        ratingKey: record.ratingKey,
+        mediaType: record.mediaType,
+      });
+      addToast(
+        intl.formatMessage(messages.regenerateSuccess, { title: record.title }),
+        { appearance: 'success', autoDismiss: true }
+      );
+    } catch {
+      addToast(intl.formatMessage(messages.regenerateError), {
+        appearance: 'error',
+        autoDismiss: true,
+      });
+    } finally {
+      setRegeneratingKey(null);
     }
   };
 
@@ -520,7 +546,21 @@ const SettingsLanguageTagger: React.FC = () => {
                             : '—'}
                         </td>
                         <td className="px-4 py-2 text-right text-xs text-stone-500">
-                          {new Date(r.updatedAt).toLocaleDateString()}
+                          <div className="flex items-center justify-end gap-2">
+                            <button
+                              onClick={() => handleRegenerate(r)}
+                              disabled={regeneratingKey === r.ratingKey}
+                              className="text-stone-500 hover:text-indigo-400 disabled:opacity-40"
+                              title={intl.formatMessage(messages.regenerate)}
+                            >
+                              {regeneratingKey === r.ratingKey ? (
+                                <ArrowPathIcon className="h-3.5 w-3.5 animate-spin" />
+                              ) : (
+                                <FilmIcon className="h-3.5 w-3.5" />
+                              )}
+                            </button>
+                            {new Date(r.updatedAt).toLocaleDateString()}
+                          </div>
                         </td>
                       </tr>
                     );

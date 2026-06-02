@@ -5,6 +5,8 @@ import { posterResetJob } from '@server/lib/overlays/PosterResetJob';
 import { getSettings } from '@server/lib/settings';
 import { isAuthenticated } from '@server/middleware/auth';
 import { Router } from 'express';
+import { getRepository } from '@server/datasource';
+import { OverlayLibraryConfig } from '@server/entity/OverlayLibraryConfig';
 
 const router = Router();
 
@@ -289,6 +291,65 @@ router.post(
     });
   }
 );
+
+/**
+ * POST /api/v1/overlay-settings/regenerate-item
+ * Regenerate the overlay for a single item (movie, show, or season).
+ * Automatically finds the matching overlay-configured library from the mediaType.
+ */
+router.post('/regenerate-item', isAuthenticated(), async (req, res) => {
+  const { ratingKey, mediaType } = req.body as {
+    ratingKey?: string;
+    mediaType?: 'movie' | 'show' | 'season';
+  };
+
+  if (!ratingKey) {
+    return res.status(400).json({ error: 'ratingKey is required' });
+  }
+
+  if (overlayApplication.running) {
+    return res.status(409).json({ error: 'Full overlay sync is running — please wait' });
+  }
+
+  try {
+    const { overlayLibraryService } = await import(
+      '@server/lib/overlays/OverlayLibraryService'
+    );
+
+    // Determine which media type to search configs for
+    // Seasons belong to shows, so we look for a 'show' library
+    const lookupType = mediaType === 'season' ? 'show' : (mediaType ?? 'movie');
+
+    const configs = await getRepository(OverlayLibraryConfig).find();
+    const matching = configs.filter(
+      (c) => c.mediaType === lookupType && c.enabledOverlays.some((o) => o.enabled)
+    );
+
+    if (!matching.length) {
+      return res.status(404).json({
+        error: `No overlay-configured library found for media type "${lookupType}"`,
+      });
+    }
+
+    // Use the first matching library — works for most setups (one films, one séries)
+    const config = matching[0];
+
+    overlayLibraryService
+      .applyOverlaysToCollectionItems([ratingKey], config.libraryId, true)
+      .catch(() => {/* already logged */});
+
+    return res.status(202).json({
+      message: 'Regeneration started',
+      ratingKey,
+      libraryId: config.libraryId,
+      libraryName: config.libraryName,
+    });
+  } catch (error) {
+    return res.status(500).json({
+      error: error instanceof Error ? error.message : 'Internal error',
+    });
+  }
+});
 
 /**
  * POST /api/v1/overlay-settings/force-resync

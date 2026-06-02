@@ -15802,6 +15802,38 @@ paths:
         '401':
           description: Authentication required
 
+  /overlay-settings/regenerate-item:
+    post:
+      summary: Regenerate overlay for a single item
+      description: Applies overlays to a single movie, show, or season identified by Plex ratingKey. Automatically finds the matching library config.
+      tags:
+        - overlays
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                ratingKey:
+                  type: string
+                mediaType:
+                  type: string
+                  enum: [movie, show, season]
+      responses:
+        '202':
+          description: Regeneration started
+          content:
+            application/json:
+              schema:
+                type: object
+        '404':
+          description: No overlay-configured library found
+        '409':
+          description: Full sync already running
+        '401':
+          description: Authentication required
+
   /overlay-settings/force-resync:
     post:
       summary: Force resync all overlays from original posters
