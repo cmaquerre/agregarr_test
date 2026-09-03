@@ -24,7 +24,7 @@ const messages = defineMessages({
   plex: 'Plex',
   plexsettings: 'Plex Settings',
   plexsettingsDescription:
-    'Configure the settings for your Plex server. Agregarr scans, creates, and manages Collections and Hubs on your Plex server.',
+    'Configure the settings for your Plex server. Posterarr scans, creates, and manages Collections and Hubs on your Plex server.',
   serverpreset: 'Server',
   serverLocal: 'local',
   serverRemote: 'remote',
@@ -187,7 +187,7 @@ const SettingsPlex = ({ onComplete }: SettingsPlexProps) => {
     }
   };
 
-  // Scan and library toggle functions removed for Agregarr - not used
+  // Scan and library toggle functions removed for Posterarr - not used
   // These were Overseerr-specific functionality
 
   // Main component loading check

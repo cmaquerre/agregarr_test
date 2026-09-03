@@ -178,7 +178,7 @@ sourceColorsRoutes.post('/import', isAuthenticated(), async (req, res) => {
     // Validate version compatibility
     if (version && version !== '1.0') {
       return res.status(400).json({
-        error: `Unsupported version: ${version}. This version of Agregarr supports version 1.0.`,
+        error: `Unsupported version: ${version}. This version of Posterarr supports version 1.0.`,
       });
     }
 

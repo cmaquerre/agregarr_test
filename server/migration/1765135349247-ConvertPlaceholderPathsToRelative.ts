@@ -9,7 +9,7 @@ import type { MigrationInterface } from 'typeorm';
  *
  * REASON:
  * Storing absolute paths causes issues when users change their library root folder
- * in Agregarr settings. Even if the mounted volume hasn't changed, the stored
+ * in Posterarr settings. Even if the mounted volume hasn't changed, the stored
  * absolute paths become invalid.
  *
  * SOLUTION:

@@ -598,7 +598,7 @@ export class DiscoveryService {
           });
 
           missingCollections.push(config.id);
-          logger.warn(`Missing Agregarr collection detected: ${config.name}`, {
+          logger.warn(`Missing Posterarr collection detected: ${config.name}`, {
             label: 'Discovery Service - Validation',
             configId: config.id,
             ratingKey: config.collectionRatingKey,
@@ -951,7 +951,7 @@ export class DiscoveryService {
               }
             }
           } else if (parsedHub.ratingKey) {
-            // This has a rating key - check if it's an Agregarr collection or pre-existing
+            // This has a rating key - check if it's an Posterarr collection or pre-existing
             const matchingCollectionConfig = collectionConfigs.find(
               (config) =>
                 config.collectionRatingKey === parsedHub.ratingKey &&
@@ -1178,7 +1178,7 @@ export class DiscoveryService {
                   }
                 }
 
-                // Check if this collection has a label indicating it belongs to an existing Agregarr collection
+                // Check if this collection has a label indicating it belongs to an existing Posterarr collection
                 const hasMatchingCollectionId = collectionWithLabels
                   ? this.checkCollectionForExistingId(
                       collectionWithLabels,
@@ -1254,7 +1254,7 @@ export class DiscoveryService {
     ) {
       logger.info('Hub discovery completed', {
         label: 'Hub Discovery',
-        summary: `Processed ${processedHubs} hubs, ${processedPreExisting} pre-existing collections, skipped ${skippedAgregarrCollections} Agregarr collections`,
+        summary: `Processed ${processedHubs} hubs, ${processedPreExisting} pre-existing collections, skipped ${skippedAgregarrCollections} Posterarr collections`,
         processedHubs,
         processedPreExisting,
         skippedAgregarrCollections,
@@ -1366,7 +1366,7 @@ export class DiscoveryService {
 
         if (!library) continue;
 
-        // Check if this is an Agregarr collection BEFORE downloading poster
+        // Check if this is an Posterarr collection BEFORE downloading poster
         const matchingCollectionConfig = collectionConfigs.find(
           (config) =>
             config.collectionRatingKey === collection.ratingKey &&
@@ -1434,7 +1434,7 @@ export class DiscoveryService {
             );
           }
 
-          // This is a pre-existing collection (not created by Agregarr)
+          // This is a pre-existing collection (not created by Posterarr)
           const collectionConfig = createPreExistingConfigFromDiscovery(
             collection.ratingKey,
             {
@@ -1509,14 +1509,14 @@ export class DiscoveryService {
           const preExistingKey = `${collectionConfig.libraryId}:${collectionConfig.collectionRatingKey}`;
           const collectionKey = `${collectionConfig.libraryId}:${collectionConfig.collectionRatingKey}`;
 
-          // Check if this collection has a label indicating it belongs to an existing Agregarr collection
+          // Check if this collection has a label indicating it belongs to an existing Posterarr collection
           const hasMatchingCollectionId = this.checkCollectionForExistingId(
             collection,
             libraryId,
             existingCollectionIds
           );
 
-          // Don't add if it exists as pre-existing config OR as collection config OR matches existing Agregarr collection ID
+          // Don't add if it exists as pre-existing config OR as collection config OR matches existing Posterarr collection ID
           if (
             !existingPreExistingKeys.has(preExistingKey) &&
             !existingCollectionKeys.has(collectionKey) &&
@@ -1537,7 +1537,7 @@ export class DiscoveryService {
 
       if (totalProcessed > 0 || totalSkipped > 0) {
         logger.info(
-          `Poster discovery completed: ${posterDiscoveryStats.successful} stored, ${posterDiscoveryStats.failed} failed, ${totalSkipped} skipped (${posterDiscoveryStats.agregarrSkipped} Agregarr, ${posterDiscoveryStats.managedSkipped} managed)`,
+          `Poster discovery completed: ${posterDiscoveryStats.successful} stored, ${posterDiscoveryStats.failed} failed, ${totalSkipped} skipped (${posterDiscoveryStats.agregarrSkipped} Posterarr, ${posterDiscoveryStats.managedSkipped} managed)`,
           {
             label: 'Poster Discovery',
             successful: posterDiscoveryStats.successful,
@@ -1790,8 +1790,8 @@ export class DiscoveryService {
   }
 
   /**
-   * Check if a collection is managed by Agregarr and should be filtered from discovery
-   * This includes any collection with Agregarr labels (not just Overseerr user collections)
+   * Check if a collection is managed by Posterarr and should be filtered from discovery
+   * This includes any collection with Posterarr labels (not just Overseerr user collections)
    */
   private isAgregarrManagedCollection(collection: PlexCollection): boolean {
     return (
@@ -2118,7 +2118,7 @@ export class DiscoveryService {
 
   /**
    * Link discovered poster to matching collection configs
-   * Sets the discovered poster as the customPoster for Agregarr collections and pre-existing collections
+   * Sets the discovered poster as the customPoster for Posterarr collections and pre-existing collections
    * that don't already have a poster configured. If oldPosterFilename is provided, it will update
    * configs that reference the old poster with the new one.
    */
@@ -2132,7 +2132,7 @@ export class DiscoveryService {
       const settings = getSettings();
       let updated = false;
 
-      // Check user-created Agregarr collection configs
+      // Check user-created Posterarr collection configs
       const collectionConfigs = settings.plex.collectionConfigs || [];
       for (const config of collectionConfigs) {
         // Use robust matching: rating key + library OR label matching
@@ -2187,7 +2187,7 @@ export class DiscoveryService {
             mutableConfig.customPoster = posterFilename;
             updated = true;
             logger.info(
-              `Linked discovered poster to Agregarr collection config: ${config.name}`,
+              `Linked discovered poster to Posterarr collection config: ${config.name}`,
               {
                 label: 'Poster Discovery',
                 configId: config.id,
@@ -2388,7 +2388,7 @@ export class DiscoveryService {
   }
 
   /**
-   * Check if a Plex collection has a label indicating it belongs to an existing Agregarr collection
+   * Check if a Plex collection has a label indicating it belongs to an existing Posterarr collection
    * This prevents duplicate detection gaps for unsynced collections
    */
   private checkCollectionForExistingId(
@@ -2404,7 +2404,7 @@ export class DiscoveryService {
     for (const label of collection.labels) {
       const labelText = typeof label === 'string' ? label : label.tag;
 
-      // Look for Agregarr labels with config IDs
+      // Look for Posterarr labels with config IDs
       if (labelText.toLowerCase().startsWith('agregarr')) {
         // Extract potential config ID from label
         const configIdMatch = labelText.match(/agregarr[^0-9]*(\d+)/i);
@@ -2413,7 +2413,7 @@ export class DiscoveryService {
           const libraryIdKey = `${libraryId}:${configId}`;
 
           if (existingCollectionIds.has(libraryIdKey)) {
-            logger.debug('Found existing Agregarr collection via label match', {
+            logger.debug('Found existing Posterarr collection via label match', {
               label: 'Discovery Service - Duplicate Detection',
               collectionName: collection.title,
               libraryId,

@@ -34,7 +34,7 @@ const messages = defineMessages({
   errorToast: 'Failed to update {name}: {error}',
   allTypes: 'All Types',
   allLibraries: 'All Libraries',
-  agregarrCollections: 'Agregarr Collections',
+  agregarrCollections: 'Posterarr Collections',
   plexHubs: 'Plex Hubs',
   preExistingCollections: 'Pre-existing Collections',
   collectionName: 'Collection Name',
@@ -137,7 +137,7 @@ const BulkEditModal: React.FC<BulkEditModalProps> = ({
   // Selection state
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
-  // Filter and sort state - default to Agregarr collections
+  // Filter and sort state - default to Posterarr collections
   const [filterType, setFilterType] = useState<string>('agregarr');
   const [filterLibrary, setFilterLibrary] = useState<string>('all');
   const [sortColumn, setSortColumn] = useState<string>('name');
@@ -177,7 +177,7 @@ const BulkEditModal: React.FC<BulkEditModalProps> = ({
   const unifiedCollections = useMemo((): UnifiedCollection[] => {
     const unified: UnifiedCollection[] = [];
 
-    // Agregarr Collections
+    // Posterarr Collections
     collections.forEach((config) => {
       unified.push({
         id: `collection-${config.id}`,
@@ -1075,7 +1075,7 @@ const BulkEditModal: React.FC<BulkEditModalProps> = ({
                       </td>
                       <td className="px-3 py-2 text-sm text-gray-400">
                         {collection.type === 'collection'
-                          ? 'Agregarr'
+                          ? 'Posterarr'
                           : collection.type === 'hub'
                           ? 'Plex Hub'
                           : 'Pre-existing'}

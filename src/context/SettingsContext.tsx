@@ -9,7 +9,7 @@ export interface SettingsContextProps {
 
 const defaultSettings = {
   initialized: false,
-  applicationTitle: 'Agregarr',
+  applicationTitle: 'Posterarr',
   applicationUrl: '',
   hideAvailable: false,
   localLogin: true,

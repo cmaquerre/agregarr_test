@@ -266,9 +266,9 @@ class PlexAPI {
       },
       options: {
         identifier: settings.clientId,
-        product: 'Agregarr',
-        deviceName: 'Agregarr',
-        platform: 'Agregarr',
+        product: 'Posterarr',
+        deviceName: 'Posterarr',
+        platform: 'Posterarr',
       },
     });
 
@@ -1139,8 +1139,8 @@ class PlexAPI {
           return true; // Early return - no changes needed
         }
 
-        // Clean existing Agregarr labels while preserving user's custom labels
-        // Only remove OTHER Agregarr labels, not the one we're trying to add
+        // Clean existing Posterarr labels while preserving user's custom labels
+        // Only remove OTHER Posterarr labels, not the one we're trying to add
         const { cleanAgregarrCollectionLabels } = await import(
           '@server/lib/collections/core/CollectionUtilities'
         );
@@ -1149,7 +1149,7 @@ class PlexAPI {
           label
         );
 
-        // Combine preserved labels with new Agregarr label
+        // Combine preserved labels with new Posterarr label
         const allLabels = [...preservedLabels, label];
 
         // Build params with all labels to preserve existing ones

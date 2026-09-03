@@ -226,9 +226,9 @@ async function seedDefaultTemplate() {
       });
     } else {
       const defaultTemplate = new PosterTemplate({
-        name: 'Default Agregarr Template',
+        name: 'Default Posterarr Template',
         description:
-          'The original Agregarr auto-poster design converted to a template',
+          'The original Posterarr auto-poster design converted to a template',
         isDefault: true,
         isActive: true,
       });

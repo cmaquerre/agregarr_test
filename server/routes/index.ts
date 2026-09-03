@@ -141,7 +141,7 @@ router.get('/status/appdata', (_req, res) => {
 });
 
 router.get('/request/count', (_req, res) => {
-  // Request system removed for Agregarr - return zero counts
+  // Request system removed for Posterarr - return zero counts
   return res.status(200).json({
     pending: 0,
     approved: 0,
@@ -153,7 +153,7 @@ router.get('/request/count', (_req, res) => {
 });
 
 router.get('/issue/count', (_req, res) => {
-  // Issue system removed for Agregarr - return zero counts
+  // Issue system removed for Posterarr - return zero counts
   return res.status(200).json({
     total: 0,
     video: 0,
@@ -179,7 +179,7 @@ router.use('/settings', isAuthenticated(), settingsRoutes);
 router.use('/dashboard', isAuthenticated(), dashboardRoutes);
 router.use('/filesystem', isAuthenticated(), filesystemRoutes);
 router.use('/overseerr', isAuthenticated(), overseerrRoutes);
-// Search, movie, and TV routes removed - discovery functionality not needed in Agregarr
+// Search, movie, and TV routes removed - discovery functionality not needed in Posterarr
 router.use('/media', isAuthenticated(), mediaRoutes);
 router.use('/missing-items', isAuthenticated(), missingItemsRoutes);
 router.use('/collections', isAuthenticated(), collectionsRoutes);
@@ -650,7 +650,7 @@ router.get(
 
 router.get('/', (_req, res) => {
   return res.status(200).json({
-    api: 'Agregarr API',
+    api: 'Posterarr API',
     version: '1.0',
   });
 });

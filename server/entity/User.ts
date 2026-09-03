@@ -1,5 +1,5 @@
 import { UserType } from '@server/constants/user';
-// getSettings import removed - not used in simplified Agregarr User entity
+// getSettings import removed - not used in simplified Posterarr User entity
 import bcrypt from 'bcrypt';
 import { randomUUID } from 'crypto';
 import { default as generatePassword } from 'secure-random-password';

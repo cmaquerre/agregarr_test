@@ -45,9 +45,9 @@ import useSWR from 'swr';
 const messages = defineMessages({
   allCollectionsTitle: 'All Collections',
   allCollectionsDescription:
-    'Complete list of all Agregarr Collections, Default Plex Hubs, and Pre-existing Collections.',
+    'Complete list of all Posterarr Collections, Default Plex Hubs, and Pre-existing Collections.',
   noCollections: 'No collections found.',
-  agregarrCollections: 'Agregarr Collections',
+  agregarrCollections: 'Posterarr Collections',
   plexHubs: 'Plex Hubs',
   preExistingCollections: 'Pre-existing Collections',
   totalCollections: '{count} total collections',
@@ -174,7 +174,7 @@ const AllCollectionsView: React.FC = () => {
 
     const collections: DisplayCollection[] = [];
 
-    // 1. Agregarr Collections (native CollectionFormConfig)
+    // 1. Posterarr Collections (native CollectionFormConfig)
     const collectionConfigs: CollectionFormConfig[] =
       collectionData.collectionConfigs || [];
     collectionConfigs.forEach((config: CollectionFormConfig) => {
@@ -714,7 +714,7 @@ const AllCollectionsView: React.FC = () => {
                         libraryName={collection.libraryName || ''}
                       />
 
-                      {/* Collection Type Badge - Removed for Agregarr collections */}
+                      {/* Collection Type Badge - Removed for Posterarr collections */}
                       {isHub && <PlexDefaultBadge />}
                       {isPreExisting && <PreExistingBadge withBorder={true} />}
 
@@ -766,7 +766,7 @@ const AllCollectionsView: React.FC = () => {
                         timeRestriction={timeRestriction}
                       />
 
-                      {/* Custom Sync Schedule Badge (only for Agregarr collections) */}
+                      {/* Custom Sync Schedule Badge (only for Posterarr collections) */}
                       {isCollection && (
                         <CustomSyncScheduleBadge
                           customSyncSchedule={
@@ -823,7 +823,7 @@ const AllCollectionsView: React.FC = () => {
                   </Button>
 
                   {isCollection ? (
-                    // Full delete for Agregarr collections
+                    // Full delete for Posterarr collections
                     <ConfirmButton
                       confirmText="Delete"
                       buttonSize="sm"

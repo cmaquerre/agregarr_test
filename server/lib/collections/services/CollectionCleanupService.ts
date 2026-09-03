@@ -161,12 +161,12 @@ export class CollectionCleanupService {
   }
 
   /**
-   * Remove ALL collections with agregarr labels and clear ALL agregarr user labels
+   * Remove ALL collections with posterarr labels and clear ALL posterarr user labels
    * Called when the last collection configuration is deleted
    */
   public async cleanupCollections(plexClient: PlexAPI): Promise<void> {
     logger.info(
-      'Starting complete cleanup of all agregarr collections and user labels',
+      'Starting complete cleanup of all posterarr collections and user labels',
       {
         label: 'Collection Cleanup Service',
       }
@@ -177,7 +177,7 @@ export class CollectionCleanupService {
     let usersProcessed = 0;
     let usersFailed = 0;
 
-    // 1. DELETE ALL COLLECTIONS with agregarr labels
+    // 1. DELETE ALL COLLECTIONS with posterarr labels
     try {
       const allCollections = await plexClient.getAllCollections();
       const agregarrCollections = allCollections.filter(
@@ -190,14 +190,14 @@ export class CollectionCleanupService {
       );
 
       logger.info(
-        `Found ${agregarrCollections.length} agregarr collections to delete`,
+        `Found ${agregarrCollections.length} posterarr collections to delete`,
         {
           label: 'Collection Cleanup Service',
           collectionsToDelete: agregarrCollections.length,
         }
       );
 
-      // Delete ALL agregarr collections - no conditions, no user checks
+      // Delete ALL posterarr collections - no conditions, no user checks
       for (const collection of agregarrCollections) {
         if (this.cancelled) break;
 
@@ -304,14 +304,14 @@ export class CollectionCleanupService {
 
       if (allPlexUserIds.length > 0) {
         logger.info(
-          `Clearing agregarr labels from ${allPlexUserIds.length} Plex users`,
+          `Clearing posterarr labels from ${allPlexUserIds.length} Plex users`,
           {
             label: 'Collection Cleanup Service',
             usersToProcess: allPlexUserIds.length,
           }
         );
 
-        // Clear agregarr filters from all users concurrently
+        // Clear posterarr filters from all users concurrently
         const userClearPromises = allPlexUserIds.map(async (userPlexId) => {
           try {
             await clearUserFilters(userPlexId);
@@ -391,7 +391,7 @@ export class CollectionCleanupService {
     // Get all users to track label processing
     const allUsers = await overseerrCollectionService.getUsersWithPlexIds();
 
-    // Delete all Agregarr collections by passing empty config list
+    // Delete all Posterarr collections by passing empty config list
     await this.cleanupDisabledCollections(
       plexClient,
       agregarrCollectionsBefore,

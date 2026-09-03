@@ -352,7 +352,7 @@ const TimeRestrictionsSection = ({
         </div>
       )}
 
-      {/* Custom Sync Schedule Section - Only for Agregarr collections (not hubs, pre-existing, or filtered_hub) */}
+      {/* Custom Sync Schedule Section - Only for Posterarr collections (not hubs, pre-existing, or filtered_hub) */}
       {!isDefaultPlexHub &&
         !isPreExisting &&
         values.type !== 'filtered_hub' && (

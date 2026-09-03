@@ -90,7 +90,7 @@ class OverlayLibraryService {
   }
 
   /**
-   * Build a map of item ratingKey → collection IDs for all agregarr and pre-existing collections.
+   * Build a map of item ratingKey → collection IDs for all posterarr and pre-existing collections.
    * Called once at the start of an overlay job for efficient per-item lookups.
    */
   private async buildCollectionMembershipMap(

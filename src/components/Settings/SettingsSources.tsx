@@ -27,7 +27,7 @@ const messages = defineMessages({
   sourcesDescription: 'Configure sources for Collection generation.',
   tautulliSettings: 'Tautulli Settings',
   tautulliSettingsDescription:
-    'Optionally configure the settings for your Tautulli server. Agregarr fetches watch history data for your Plex media from Tautulli.',
+    'Optionally configure the settings for your Tautulli server. Posterarr fetches watch history data for your Plex media from Tautulli.',
   tautulliHostname: 'Hostname or IP Address',
   tautulliPort: 'Port',
   tautulliUseSsl: 'Use SSL',

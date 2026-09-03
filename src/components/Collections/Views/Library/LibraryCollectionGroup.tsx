@@ -305,7 +305,7 @@ const SortableItem = ({
 
           {/* Enhanced Badges - native type implementation */}
           <div className="flex flex-wrap items-center gap-2">
-            {/* Collection Type Badge - Removed for Agregarr collections */}
+            {/* Collection Type Badge - Removed for Posterarr collections */}
             {isHub && <PlexDefaultBadge />}
             {isPreExisting && <PreExistingBadge />}
 
@@ -317,7 +317,7 @@ const SortableItem = ({
               />
             )}
 
-            {/* Item Count Badge (only for Agregarr collections) */}
+            {/* Item Count Badge (only for Posterarr collections) */}
             {isCollection &&
               (() => {
                 const collectionConfig = config as CollectionFormConfig;
@@ -351,7 +351,7 @@ const SortableItem = ({
             {/* Time Restrictions Badge */}
             <TimeRestrictionsBadge timeRestriction={config.timeRestriction} />
 
-            {/* Custom Sync Schedule Badge (only for Agregarr collections) */}
+            {/* Custom Sync Schedule Badge (only for Posterarr collections) */}
             {isCollection && (
               <CustomSyncScheduleBadge
                 customSyncSchedule={
@@ -504,7 +504,7 @@ const SortableItem = ({
           )}
 
         {isCollection ? (
-          // Full delete for Agregarr collections
+          // Full delete for Posterarr collections
           <ConfirmButton
             confirmText="Delete"
             buttonSize="sm"

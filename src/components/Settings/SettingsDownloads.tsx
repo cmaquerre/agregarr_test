@@ -60,7 +60,7 @@ const messages = defineMessages({
   saving: 'Saving…',
   placeholderSettings: 'Placeholder Root Folders',
   placeholderSettingsDescription:
-    'Configure root folders for placeholder files for each library. These paths should match the mounted Plex library paths inside the Agregarr container.',
+    'Configure root folders for placeholder files for each library. These paths should match the mounted Plex library paths inside the Posterarr container.',
   libraryPlaceholderFolder: 'Placeholder Folder for {libraryName}',
   libraryPlaceholderFolderTip:
     'Path where placeholder files will be created for this library',
@@ -88,7 +88,7 @@ const messages = defineMessages({
     'Install a browser extension to export cookies: {firefoxLink} / {chromeLink}',
   youtubeSetupStep2: 'Visit YouTube while logged in to your account',
   youtubeSetupStep3:
-    'Export cookies and save as {cookiesPath} in your Agregarr config directory',
+    'Export cookies and save as {cookiesPath} in your Posterarr config directory',
   noLibrariesFound: 'No libraries found. Configure your Plex connection first.',
   skipYoutubeTrailerDownloads: 'Skip YouTube Trailer Downloads',
   skipYoutubeTrailerDownloadsDescription:
@@ -1091,7 +1091,7 @@ const SettingsDownloads = ({ onComplete }: SettingsDownloadsProps) => {
             <li>
               Remote:{' '}
               <code className="rounded bg-stone-700 px-1 py-0.5 font-mono text-stone-200">
-                https://agregarr.yourdomain.com/plex-webhook
+                https://posterarr.yourdomain.com/plex-webhook
               </code>
             </li>
           </ul>

@@ -10,7 +10,7 @@ const messages = defineMessages({
   exportDescription:
     'Select which data to include in the debug export. This will create a zip file containing the selected information.',
   exportWarning:
-    'Warning: The exported debug information is not sanitised and contains sensitive data such as tokens and API keys. This tool should only be used at the specific request of the Agregarr Developer. Do not share this file publicly. If you want to sanitise the data, you can manually remove sensitive information after exporting.',
+    'Warning: The exported debug information is not sanitised and contains sensitive data such as tokens and API keys. This tool should only be used at the specific request of the Posterarr Developer. Do not share this file publicly. If you want to sanitise the data, you can manually remove sensitive information after exporting.',
   selectItems: 'Select items to export:',
   database: 'Database (db.sqlite3)',
   settings: 'Settings (settings.json)',

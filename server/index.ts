@@ -28,9 +28,9 @@ import path from 'path';
 import swaggerUi from 'swagger-ui-express';
 import YAML from 'yamljs';
 
-const API_SPEC_PATH = path.join(__dirname, '../agregarr-api.yml');
+const API_SPEC_PATH = path.join(__dirname, '../posterarr-api.yml');
 
-logger.info(`Starting Agregarr version ${getAppVersion()}`);
+logger.info(`Starting Posterarr version ${getAppVersion()}`);
 const dev = process.env.NODE_ENV !== 'production';
 const app = next({ dev });
 const handle = app.getRequestHandler();

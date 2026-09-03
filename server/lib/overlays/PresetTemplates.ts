@@ -7,7 +7,7 @@ import { OverlayTemplate } from '@server/entity/OverlayTemplate';
 import logger from '@server/logger';
 
 /**
- * Preset overlay templates that ship with Agregarr
+ * Preset overlay templates that ship with Posterarr
  * Canvas size: 1000x1500 pixels (standard poster ratio)
  * */
 export const PRESET_TEMPLATES: {

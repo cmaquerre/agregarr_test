@@ -10,7 +10,7 @@ const messages = defineMessages({
 
 const PostersOverlaysPage: React.FC = () => {
   const intl = useIntl();
-  const pageTitle = `${intl.formatMessage(messages.posterOverlays)} - Agregarr`;
+  const pageTitle = `${intl.formatMessage(messages.posterOverlays)} - Posterarr`;
 
   return (
     <>

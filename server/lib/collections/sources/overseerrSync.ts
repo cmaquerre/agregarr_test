@@ -1160,7 +1160,7 @@ export class OverseerrCollectionSync extends BaseCollectionSync<'overseerr'> {
         for (const collection of allCollections) {
           if (collection.libraryKey !== libraryKey) continue;
 
-          // Check for orphaned agregarr collections by name
+          // Check for orphaned posterarr collections by name
           const hasAgregarrLabel = collection.labels?.some(
             (label: string | PlexLabel) => {
               const labelText = typeof label === 'string' ? label : label.tag;
@@ -1315,7 +1315,7 @@ export class OverseerrCollectionSync extends BaseCollectionSync<'overseerr'> {
             itemLabelName, // Filter by label instead of base collection
             mediaType,
             sortOption,
-            smartLabel, // Add Agregarr management label
+            smartLabel, // Add Posterarr management label
             config.maxItems
           );
 

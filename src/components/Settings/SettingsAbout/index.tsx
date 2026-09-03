@@ -22,15 +22,15 @@ import useSWR from 'swr';
 
 const messages = defineMessages({
   about: 'About',
-  agregarrinformation: 'About Agregarr',
+  agregarrinformation: 'About Posterarr',
   version: 'Version',
   gettingsupport: 'Getting Support',
   githubdiscussions: 'GitHub Discussions',
-  agregarrdocs: 'Agregarr Documentation',
+  agregarrdocs: 'Posterarr Documentation',
   exportdebug: 'Export Debugging Information',
   timezone: 'Time Zone',
   appDataPath: 'Data Directory',
-  supportagregarr: 'Support Agregarr',
+  supportagregarr: 'Support Posterarr',
   helppaycoffee: 'Help Pay for Coffee',
   preferredmethod: 'Preferred',
   outofdate: 'Out of Date',
@@ -38,7 +38,7 @@ const messages = defineMessages({
   betawarning:
     'This is BETA software. Features may be broken and/or unstable. Please report any issues on GitHub!',
   runningDevelop:
-    'You are running the <code>develop</code> branch of Agregarr, which is only recommended for those contributing to development or assisting with bleeding-edge testing.',
+    'You are running the <code>develop</code> branch of Posterarr, which is only recommended for those contributing to development or assisting with bleeding-edge testing.',
   exportDebugInfo: 'Export Debugging Info',
 });
 

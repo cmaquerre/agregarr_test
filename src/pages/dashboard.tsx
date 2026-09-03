@@ -11,7 +11,7 @@ import MissingItemsFeed from '@app/components/Dashboard/MissingItemsFeed';
 const messages = defineMessages({
   dashboardTitle: 'Dashboard',
   dashboardDescription:
-    'Overview of your Agregarr statistics and collection performance',
+    'Overview of your Posterarr statistics and collection performance',
 });
 
 const DashboardPage: NextPage = () => {

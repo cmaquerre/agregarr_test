@@ -177,7 +177,7 @@ const RuleItem: React.FC<RuleItemProps> = ({
     fetch(url).then((res) => res.json())
   );
 
-  // Fetch collections for collection field (agregarr + pre-existing)
+  // Fetch collections for collection field (posterarr + pre-existing)
   const { data: agregarrCollections } = useSWR<{
     collectionConfigs: { id: string; name: string; libraryName: string }[];
   }>(isCollectionField ? '/api/v1/collections' : null, (url) =>

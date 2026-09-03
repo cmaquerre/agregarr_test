@@ -1283,10 +1283,10 @@ collectionsRoutes.delete('/:id', isAuthenticated(), async (req, res) => {
       // Continue with collection deletion even if placeholder cleanup fails
     }
 
-    // If this was the last collection config, trigger cleanup to remove all agregarr collections
+    // If this was the last collection config, trigger cleanup to remove all posterarr collections
     if (remainingConfigs.length === 0) {
       logger.info(
-        'Last collection config deleted - triggering cleanup of all agregarr collections',
+        'Last collection config deleted - triggering cleanup of all posterarr collections',
         {
           label: 'Collections API',
         }

@@ -97,7 +97,7 @@ async function fetchAniListData<T>(
     headers: {
       'Content-Type': 'application/json',
       Accept: 'application/json',
-      'User-Agent': 'Agregarr/1.0',
+      'User-Agent': 'Posterarr/1.0',
     },
     body: JSON.stringify({ query, variables }),
   });

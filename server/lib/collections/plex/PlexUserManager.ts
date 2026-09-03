@@ -76,15 +76,15 @@ export interface V2SharedServer {
 const sharedServerCache = new Map<string, V2SharedServer[]>();
 
 /**
- * Merge Agregarr labels into an existing Plex filter string
+ * Merge Posterarr labels into an existing Plex filter string
  * Preserves all existing filter components (contentRating, etc.) and only adds/updates label!= section
  *
  * Plex filter syntax: filter1&filter2&filter3
  * Each filter can be: key=value1,value2|key=value3
  *
- * @param existingFilter The current filter string (already cleaned of old Agregarr labels)
- * @param agregarrLabels Array of Agregarr label names to add to label!= section
- * @returns Complete filter string with Agregarr labels merged in
+ * @param existingFilter The current filter string (already cleaned of old Posterarr labels)
+ * @param agregarrLabels Array of Posterarr label names to add to label!= section
+ * @returns Complete filter string with Posterarr labels merged in
  */
 function mergeAgregarrLabelsIntoFilter(
   existingFilter: string,
@@ -140,7 +140,7 @@ function mergeAgregarrLabelsIntoFilter(
           ? existingLabelsStr.split(',')
           : [];
 
-        // Merge with Agregarr labels
+        // Merge with Posterarr labels
         const allLabels = [...existingLabels, ...agregarrLabels];
         return `label!=${allLabels.join(',')}`;
       }
@@ -181,7 +181,7 @@ export async function getSharedServers(
   const plexClientIdentifier = settings.clientId;
 
   // Fetch from V2 endpoint - returns ALL servers for this account
-  const shareUrl = `https://clients.plex.tv/api/v2/shared_servers/owned/accepted?X-Plex-Product=Agregarr&X-Plex-Client-Identifier=${plexClientIdentifier}&X-Plex-Token=${plexToken}`;
+  const shareUrl = `https://clients.plex.tv/api/v2/shared_servers/owned/accepted?X-Plex-Product=Posterarr&X-Plex-Client-Identifier=${plexClientIdentifier}&X-Plex-Token=${plexToken}`;
 
   const response = await fetch(shareUrl, {
     method: 'GET',
@@ -348,11 +348,11 @@ export async function updateUserFilterSettings(
       );
     }
 
-    // Clean existing Agregarr labels from Movies and TV only
+    // Clean existing Posterarr labels from Movies and TV only
     const cleanedMovieFilter = cleanOverseerrLabels(currentMovieFilter);
     const cleanedTvFilter = cleanOverseerrLabels(currentTvFilter);
 
-    // Generate new Agregarr label restrictions
+    // Generate new Posterarr label restrictions
     // Only create labels for users who actually have active Overseerr collections
     const activeOtherUserIds = activeOverseerrUserIds.filter(
       (id) => id !== targetUserPlexId
@@ -371,7 +371,7 @@ export async function updateUserFilterSettings(
       agregarrLabels.push(`AgregarrOverseerrOwner${adminUser.plexId}`);
     }
 
-    // Combine filters - merge Agregarr labels into existing filter structure for Movies and TV only
+    // Combine filters - merge Posterarr labels into existing filter structure for Movies and TV only
     let finalMovieFilter = cleanedMovieFilter;
     let finalTvFilter = cleanedTvFilter;
 
@@ -419,7 +419,7 @@ export async function updateUserFilterSettings(
     );
 
     // Use v2 API endpoint - invitedEmail in payload identifies user (not URL parameter!)
-    const url = `https://clients.plex.tv/api/v2/sharing_settings?X-Plex-Product=Agregarr&X-Plex-Client-Identifier=${plexClientIdentifier}&X-Plex-Token=${admin.plexToken}`;
+    const url = `https://clients.plex.tv/api/v2/sharing_settings?X-Plex-Product=Posterarr&X-Plex-Client-Identifier=${plexClientIdentifier}&X-Plex-Token=${admin.plexToken}`;
     const headers = {
       Accept: 'application/json',
       'Content-Type': 'application/json',
@@ -864,7 +864,7 @@ export async function clearUserFilters(
       );
     }
 
-    // Clean all Agregarr labels, keeping user's custom filters
+    // Clean all Posterarr labels, keeping user's custom filters
     const cleanedMovieFilter = cleanOverseerrLabels(currentMovieFilter);
     const cleanedTvFilter = cleanOverseerrLabels(currentTvFilter);
 
@@ -904,7 +904,7 @@ export async function clearUserFilters(
     );
 
     // Use v2 API endpoint - invitedEmail in payload identifies user (not URL parameter!)
-    const url = `https://clients.plex.tv/api/v2/sharing_settings?X-Plex-Product=Agregarr&X-Plex-Client-Identifier=${plexClientIdentifier}&X-Plex-Token=${admin.plexToken}`;
+    const url = `https://clients.plex.tv/api/v2/sharing_settings?X-Plex-Product=Posterarr&X-Plex-Client-Identifier=${plexClientIdentifier}&X-Plex-Token=${admin.plexToken}`;
     const headers = {
       Accept: 'application/json',
       'Content-Type': 'application/json',
@@ -924,7 +924,7 @@ export async function clearUserFilters(
     }
 
     logger.info(
-      `Cleared Agregarr filters for user ${targetUserPlexId}. Remaining filters - Movies: "${cleanedMovieFilter}", TV: "${cleanedTvFilter}"`
+      `Cleared Posterarr filters for user ${targetUserPlexId}. Remaining filters - Movies: "${cleanedMovieFilter}", TV: "${cleanedTvFilter}"`
     );
 
     // VERIFICATION: Immediately fetch user data again to confirm filters were cleared

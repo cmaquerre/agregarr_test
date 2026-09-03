@@ -225,7 +225,7 @@ export class OverseerrCollectionService {
         // Only requests with media and user data
         if (!request.media || !request.requestedBy) return false;
 
-        // Exclude Agregarr service users from collections
+        // Exclude Posterarr service users from collections
         if (
           request.requestedBy &&
           typeof request.requestedBy === 'object' &&

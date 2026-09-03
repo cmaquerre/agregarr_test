@@ -14,7 +14,7 @@ const messages = defineMessages({
     'Grabs the most popular poster from TMDB every run, language option can be selected in Settings -> General',
   plexOption: 'Plex Posters',
   plexDescription:
-    'Plex posters will be downloaded and used as the base poster for future overlay runs. If you want to change the base poster used, just update it in Plex and Agregarr will detect the change on the next run and download the new poster and use it going forward.',
+    'Plex posters will be downloaded and used as the base poster for future overlay runs. If you want to change the base poster used, just update it in Plex and Posterarr will detect the change on the next run and download the new poster and use it going forward.',
   localOption: 'Local Posters',
   localDescription:
     'Use custom poster images from organized folders. Place images in the folder structure shown below. Can be populated with Plex Posters. Falls back to TMDB if file not found.',

@@ -221,7 +221,7 @@ export interface CollectionFormConfig {
   readonly libraryNames?: string[]; // Temporary field for form UI when editing linked configs
   readonly sortOrderHome?: number; // Order for Plex home screen (creation time based)
   readonly sortOrderLibrary?: number; // Order for Plex library tab (0 for A-Z section, 1+ for promoted section)
-  readonly isLibraryPromoted?: boolean; // true = promoted section (uses exclamation marks), false = A-Z section (defaults to true for Agregarr collections)
+  readonly isLibraryPromoted?: boolean; // true = promoted section (uses exclamation marks), false = A-Z section (defaults to true for Posterarr collections)
   readonly randomizeHomeOrder?: boolean; // If true, randomize position amongst other randomized items on home screen
   readonly collectionRatingKey?: string; // Plex collection rating key for single-collection configs
   readonly collectionRatingKeys?: string[]; // Plex rating keys for multi-collection configs (e.g. seerr/users) — populated during sync

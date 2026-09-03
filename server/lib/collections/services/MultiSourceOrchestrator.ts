@@ -1958,7 +1958,7 @@ export class MultiSourceOrchestrator {
     options: MetadataUpdateOptions,
     items: CollectionItem[]
   ): Promise<void> {
-    // Add proper Agregarr label (replaces any existing Agregarr labels)
+    // Add proper Posterarr label (replaces any existing Posterarr labels)
     await plexClient.addLabelToCollection(
       collectionRatingKey,
       options.customLabel
@@ -2295,7 +2295,7 @@ export class MultiSourceOrchestrator {
     libraryKey: string,
     allCollections: PlexCollection[]
   ): PlexCollection | null {
-    // 1. Try to find by Agregarr label first (most reliable)
+    // 1. Try to find by Posterarr label first (most reliable)
     for (const collection of allCollections) {
       // Must be in same library
       if (

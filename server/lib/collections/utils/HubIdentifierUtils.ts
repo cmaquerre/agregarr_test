@@ -578,7 +578,7 @@ export function logDiscoveryResult(
         label: 'Hub Discovery',
         identifier: hubData.identifier || parsedHub.hubIdentifier,
         ratingKey: parsedHub.ratingKey,
-        note: 'No matching Agregarr collection config found',
+        note: 'No matching Posterarr collection config found',
         totalConfigs: collectionConfigs?.length || 0,
         configNames:
           collectionConfigs?.map((c) => c.name || c.template || 'unnamed') ||

@@ -5,7 +5,7 @@ import { useEffect, useState } from 'react';
 import { defineMessages, useIntl } from 'react-intl';
 
 const messages = defineMessages({
-  welcome: 'Welcome to Agregarr',
+  welcome: 'Welcome to Posterarr',
   signinMessage: 'Get started by signing in with your Plex account',
 });
 

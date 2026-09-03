@@ -1,4 +1,4 @@
-name: Agregarr Release
+name: Posterarr Release
 
 on:
   push:
@@ -191,8 +191,8 @@ jobs:
             -d '{
               "content": "@everyone",
               "embeds": [{
-                "title": "🎉 Agregarr v${{ needs.version-check.outputs.new_release_version }} Released!",
-                "description": "A new version of Agregarr is now available!\n\n**[📝 View Release Notes](${{ github.server_url }}/${{ github.repository }}/releases/tag/v${{ needs.version-check.outputs.new_release_version }})**",
+                "title": "🎉 Posterarr v${{ needs.version-check.outputs.new_release_version }} Released!",
+                "description": "A new version of Posterarr is now available!\n\n**[📝 View Release Notes](${{ github.server_url }}/${{ github.repository }}/releases/tag/v${{ needs.version-check.outputs.new_release_version }})**",
                 "color": 15105570,
                 "fields": [
                   {"name": "🐳 Update your Docker image", "value": "```docker pull agregarr/agregarr:latest```", "inline": false}

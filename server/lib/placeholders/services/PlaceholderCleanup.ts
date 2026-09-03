@@ -314,7 +314,7 @@ export async function cleanupOrphanedPlaceholderFiles(): Promise<number> {
 
               const files = await fs.readdir(folderPath);
               for (const file of files) {
-                // Check if this is a placeholder file. Older Agregarr versions
+                // Check if this is a placeholder file. Older Posterarr versions
                 // used {edition-Placeholder} and {edition-Coming Soon} before
                 // the rename to {edition-Trailer}, so legacy files must also
                 // be matched or they accumulate forever.

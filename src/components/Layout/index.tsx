@@ -1,4 +1,4 @@
-// Mobile components removed - Agregarr is desktop-focused
+// Mobile components removed - Posterarr is desktop-focused
 // SearchInput removed - no discovery functionality needed
 import Sidebar from '@app/components/Layout/Sidebar';
 import UserDropdown from '@app/components/Layout/UserDropdown';
@@ -20,7 +20,7 @@ const Layout = ({ children }: LayoutProps) => {
   const { currentSettings } = useSettings();
   const { setLocale } = useLocale();
   const { isFirstTimeSetup } = useFirstTimeSetup();
-  // Request and issue counting removed - not needed in Agregarr
+  // Request and issue counting removed - not needed in Posterarr
 
   useEffect(() => {
     if (setLocale && user) {

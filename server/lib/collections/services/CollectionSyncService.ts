@@ -823,10 +823,10 @@ export class CollectionSyncService {
         return;
       }
 
-      // Clean up each user's filter settings to remove Agregarr labels
+      // Clean up each user's filter settings to remove Posterarr labels
       for (const userId of allPlexUserIds) {
         try {
-          // Pass empty array for activeOverseerrUserIds to remove all Agregarr labels
+          // Pass empty array for activeOverseerrUserIds to remove all Posterarr labels
           await updateUserFilterSettings(userId, allPlexUserIds, []);
         } catch (error) {
           logger.warn(

@@ -1,6 +1,6 @@
-# Agregarr
+# Posterarr
 
-Agregarr garde votre écran d'accueil Plex ("Home" / "Recommended") à jour en générant automatiquement des Collections à partir de sources externes (Trakt, IMDb, TMDB, Letterboxd, MDBList, FlixPatrol, AniList, MyAnimeList), de vos statistiques Tautulli, ou de vos demandes Overseerr. Il peut aussi télécharger automatiquement les médias manquants via Radarr/Sonarr/Overseerr, générer des affiches (overlays) personnalisées, et — sur ce fork — détecter et afficher la langue disponible (VF/VOSTFR) sur les affiches.
+Posterarr garde votre écran d'accueil Plex ("Home" / "Recommended") à jour en générant automatiquement des Collections à partir de sources externes (Trakt, IMDb, TMDB, Letterboxd, MDBList, FlixPatrol, AniList, MyAnimeList), de vos statistiques Tautulli, ou de vos demandes Overseerr. Il peut aussi télécharger automatiquement les médias manquants via Radarr/Sonarr/Overseerr, générer des affiches (overlays) personnalisées, et — sur ce fork — détecter et afficher la langue disponible (VF/VOSTFR) sur les affiches.
 
 ## Sommaire
 
@@ -36,13 +36,13 @@ Agregarr garde votre écran d'accueil Plex ("Home" / "Recommended") à jour en g
 - **Restrictions temporelles** : collections actives uniquement sur certaines périodes/jours.
 - **Affiches personnalisées** (Poster Templates) et overlays dynamiques.
 - **Language Tagger (spécifique à ce fork)** : détecte automatiquement si un fichier est en VF, VOSTFR, ou multi-langue et l'affiche sur le poster.
-- **Webhooks temps réel (spécifique à ce fork)** : Radarr/Sonarr/Plex peuvent notifier Agregarr immédiatement après un téléchargement ou un remplacement de fichier (upgrade), pour régénérer l'affiche sans attendre le prochain cycle planifié.
+- **Webhooks temps réel (spécifique à ce fork)** : Radarr/Sonarr/Plex peuvent notifier Posterarr immédiatement après un téléchargement ou un remplacement de fichier (upgrade), pour régénérer l'affiche sans attendre le prochain cycle planifié.
 
 <img width="1902" height="983" alt="agregarr-promo" src="https://github.com/user-attachments/assets/1b744502-30ce-4988-93fc-4588e1207e69" />
 
 ## Installation
 
-Agregarr fonctionne en conteneur Docker. Deux méthodes possibles.
+Posterarr fonctionne en conteneur Docker. Deux méthodes possibles.
 
 ### Option A — Image pré-construite (recommandé)
 
@@ -50,10 +50,10 @@ L'image est construite automatiquement par la CI GitHub Actions de ce dépôt (`
 
 ```yaml
 services:
-  agregarr:
+  posterarr:
     image: ghcr.io/cmaquerre/agregarr_test:develop
     pull_policy: always
-    container_name: agregarr
+    container_name: posterarr
     ports:
       - 7173:7171
     environment:
@@ -74,7 +74,7 @@ C'est la configuration actuellement présente dans `docker-compose.yml` de ce d�
 
 ```yaml
 services:
-  agregarr:
+  posterarr:
     build:
       context: .
       dockerfile: Dockerfile
@@ -104,12 +104,12 @@ L'application est accessible sur `http://localhost:7173` (ou le port choisi).
 
 | Variable | Rôle |
 |---|---|
-| `CONFIG_DIRECTORY` | Chemin **dans le conteneur** où Agregarr lit/écrit `settings.json` et ses autres données persistantes. Doit correspondre à la cible du volume monté. |
+| `CONFIG_DIRECTORY` | Chemin **dans le conteneur** où Posterarr lit/écrit `settings.json` et ses autres données persistantes. Doit correspondre à la cible du volume monté. |
 | `TZ` | Fuseau horaire, utilisé pour calculer les dates/compte-à-rebours affichés sur les overlays. |
 
 ### Persistance des données
 
-> **Important** : si `CONFIG_DIRECTORY` n'est pas défini, Agregarr écrit ses réglages à un chemin par défaut à l'intérieur du conteneur (non monté), qui **sera perdu** au prochain redémarrage/rebuild du conteneur. Définissez toujours `CONFIG_DIRECTORY` **et** montez le même chemin en volume, comme dans les exemples ci-dessus.
+> **Important** : si `CONFIG_DIRECTORY` n'est pas défini, Posterarr écrit ses réglages à un chemin par défaut à l'intérieur du conteneur (non monté), qui **sera perdu** au prochain redémarrage/rebuild du conteneur. Définissez toujours `CONFIG_DIRECTORY` **et** montez le même chemin en volume, comme dans les exemples ci-dessus.
 >
 > Si après un redémarrage vos réglages semblent réinitialisés, la cause la plus fréquente est un volume mal configuré (chemin différent, volume anonyme au lieu d'un bind mount, ou changement de `CONFIG_DIRECTORY` entre deux versions de votre `docker-compose.yml`).
 
@@ -119,7 +119,7 @@ Au premier démarrage, un assistant de configuration (Setup) vous guide pour :
 
 1. Vous connecter à votre compte Plex (OAuth).
 2. Sélectionner votre serveur Plex et les bibliothèques à gérer.
-3. Choisir les bibliothèques sur lesquelles Agregarr pourra créer des collections.
+3. Choisir les bibliothèques sur lesquelles Posterarr pourra créer des collections.
 
 ## Configuration
 
@@ -155,7 +155,7 @@ Tous les réglages se trouvent dans **Settings**, accessible depuis le menu prin
 
 Un délai (par défaut 5 minutes pour Radarr/Sonarr, 0 pour Plex) est appliqué avant traitement, le temps que Plex réindexe le fichier — réglable dans la même page.
 
-> Vérification rapide : après une régénération, si l'affiche ne bouge pas, contrôlez d'abord que le webhook correspondant est bien **activé côté Agregarr** ET **configuré côté Radarr/Sonarr** — les deux moitiés sont nécessaires, l'une sans l'autre ne fait rien.
+> Vérification rapide : après une régénération, si l'affiche ne bouge pas, contrôlez d'abord que le webhook correspondant est bien **activé côté Posterarr** ET **configuré côté Radarr/Sonarr** — les deux moitiés sont nécessaires, l'une sans l'autre ne fait rien.
 
 ### Dossiers média et Coming Soon
 
@@ -168,7 +168,7 @@ Pour la fonctionnalité Coming Soon/Placeholder, montez vos dossiers média en l
 ## Dépannage rapide
 
 - **Les réglages ne persistent pas après un redémarrage** → vérifiez `CONFIG_DIRECTORY` et le volume monté (voir [Persistance des données](#persistance-des-données)).
-- **L'affiche ne se met pas à jour après un retéléchargement Radarr/Sonarr** → vérifiez que le webhook est activé des deux côtés (Agregarr **et** Radarr/Sonarr), voir [Webhooks](#webhooks--mise-à-jour-des-affiches-en-temps-réel).
+- **L'affiche ne se met pas à jour après un retéléchargement Radarr/Sonarr** → vérifiez que le webhook est activé des deux côtés (Posterarr **et** Radarr/Sonarr), voir [Webhooks](#webhooks--mise-à-jour-des-affiches-en-temps-réel).
 - **Logs** : consultables dans **Settings → Logs** ou dans le dossier monté (`<config>/logs`).
 
 ## Licence et crédits

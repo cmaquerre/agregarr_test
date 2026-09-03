@@ -53,7 +53,7 @@ const messages = defineMessages({
   externalUrl: 'External URL',
   tagRequests: 'Automatic Tag Mode',
   tagRequestsInfo:
-    'Choose how Agregarr tags Sonarr downloads (tags are created if they do not exist).',
+    'Choose how Posterarr tags Sonarr downloads (tags are created if they do not exist).',
   tagModeOff: 'Do not add automatic tags',
   tagModeSingle: 'Single tag (agregarr)',
   tagModePerService: 'Per service tags (trakt-agregarr, tmdb-agregarr)',

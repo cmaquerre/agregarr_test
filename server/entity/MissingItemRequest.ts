@@ -11,7 +11,7 @@ import { User } from './User';
 
 /**
  * Entity for tracking missing items that have been requested
- * This allows us to show users what Agregarr has been doing
+ * This allows us to show users what Posterarr has been doing
  */
 @Entity()
 export class MissingItemRequest {

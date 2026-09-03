@@ -7,7 +7,7 @@ import TautulliAPI from '@server/api/tautulli';
 import TraktAPI from '@server/api/trakt';
 import { getRepository } from '@server/datasource';
 import Media from '@server/entity/Media';
-// MediaRequest entity removed - not needed for Agregarr
+// MediaRequest entity removed - not needed for Posterarr
 import { User } from '@server/entity/User';
 import type { PlexConnection } from '@server/interfaces/api/plexInterfaces';
 import type {
@@ -28,7 +28,7 @@ import type {
 import { getSettings } from '@server/lib/settings';
 import logger from '@server/logger';
 import { isAuthenticated } from '@server/middleware/auth';
-// Discover settings routes removed - discovery functionality not needed in Agregarr
+// Discover settings routes removed - discovery functionality not needed in Posterarr
 import { appDataPath } from '@server/utils/appDataVolume';
 import { getAppVersion } from '@server/utils/appVersion';
 import {
@@ -45,14 +45,14 @@ import { escapeRegExp, merge, set, sortBy } from 'lodash';
 import { rescheduleJob } from 'node-schedule';
 import path from 'path';
 import { URL } from 'url';
-// Notification routes removed - not needed for Agregarr
+// Notification routes removed - not needed for Posterarr
 import radarrRoutes from './radarr';
 import sonarrRoutes from './sonarr';
 const settingsRoutes = Router();
 
 settingsRoutes.use('/radarr', radarrRoutes);
 settingsRoutes.use('/sonarr', sonarrRoutes);
-// Discover settings routes removed - discovery functionality not needed in Agregarr
+// Discover settings routes removed - discovery functionality not needed in Posterarr
 
 const filteredMainSettings = (
   user: User,
@@ -1312,7 +1312,7 @@ settingsRoutes.post('/initialize', isAuthenticated(), (_req, res) => {
 
 settingsRoutes.get('/about', async (req, res) => {
   const mediaRepository = getRepository(Media);
-  // MediaRequest functionality removed for Agregarr
+  // MediaRequest functionality removed for Posterarr
 
   const totalMediaItems = await mediaRepository.count();
   const totalRequests = 0; // Request system removed
@@ -1329,7 +1329,7 @@ settingsRoutes.get('/about', async (req, res) => {
 settingsRoutes.post('/reset', async (_req, res, next) => {
   try {
     logger.info(
-      'Manual reset requested - cleaning up all agregarr collections',
+      'Manual reset requested - cleaning up all posterarr collections',
       {
         label: 'Settings Reset',
       }

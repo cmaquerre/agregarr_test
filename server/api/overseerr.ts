@@ -22,7 +22,7 @@ export interface OverseerrUser {
   tvQuotaLimit?: number | null;
   tvQuotaDays?: number | null;
   requestCount?: number;
-  // Additional fields for Agregarr functionality
+  // Additional fields for Posterarr functionality
   plexToken?: string; // Needed to fetch Plex titles/nicknames directly
 }
 

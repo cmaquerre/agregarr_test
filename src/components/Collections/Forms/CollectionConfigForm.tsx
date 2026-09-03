@@ -952,7 +952,7 @@ const CollectionFormConfigForm = ({
   const isPreExisting =
     config.collectionType === 'pre_existing' ||
     (config as CollectionFormConfig).configType === 'preExisting';
-  const isCollection = !isHub && !isPreExisting; // Regular Agregarr collections
+  const isCollection = !isHub && !isPreExisting; // Regular Posterarr collections
 
   // Use unified linking approach - check if actively linked
   // If isUnlinked is true, treat as NOT linked (available for re-linking)

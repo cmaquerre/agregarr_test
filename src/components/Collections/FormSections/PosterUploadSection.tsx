@@ -127,7 +127,7 @@ const PosterUploadSection = ({
   // Get current selected template - if none selected, use the default template
   const defaultTemplate =
     templates?.find((t) => t.isDefault) ||
-    templates?.find((t) => t.name === 'Default Agregarr Template');
+    templates?.find((t) => t.name === 'Default Posterarr Template');
   const selectedTemplateId =
     values.autoPosterTemplate || defaultTemplate?.id || null;
   const selectedTemplate = templates?.find((t) => t.id === selectedTemplateId);
@@ -222,7 +222,7 @@ const PosterUploadSection = ({
 
   return (
     <>
-      {/* Auto-poster toggle - only for Agregarr collections */}
+      {/* Auto-poster toggle - only for Posterarr collections */}
       {isAgregarrCollection && (
         <div className="mb-6">
           <div className="flex items-center">
@@ -374,7 +374,7 @@ const PosterUploadSection = ({
           </>
         )}
 
-      {/* Manual poster uploads - show when auto-poster is disabled OR when not an Agregarr collection */}
+      {/* Manual poster uploads - show when auto-poster is disabled OR when not an Posterarr collection */}
       {(!isAgregarrCollection || !isAutoPosterEnabled) && (
         <>
           {/* Horizontal library poster uploads */}

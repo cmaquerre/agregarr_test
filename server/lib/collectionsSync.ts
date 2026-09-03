@@ -292,7 +292,7 @@ class CollectionsSync {
       this.setStage('Refreshing external data...');
       await this.refreshExternalData(plexClient);
 
-      // Get collection count for progress tracking - only count actual agregarr collections
+      // Get collection count for progress tracking - only count actual posterarr collections
       const settings = getSettings();
       const agregarrCollections = settings.plex.collectionConfigs || [];
       this.setStage('Processing collections...', agregarrCollections.length, 0);

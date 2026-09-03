@@ -1,4 +1,4 @@
-// MiniQuotaDisplay removed - quota system not needed in Agregarr
+// MiniQuotaDisplay removed - quota system not needed in Posterarr
 import { useUser } from '@app/hooks/useUser';
 import { Menu, Transition } from '@headlessui/react';
 import { ArrowRightOnRectangleIcon } from '@heroicons/react/24/outline';
@@ -64,7 +64,7 @@ const UserDropdown = () => {
                   </span>
                 </div>
               </div>
-              {/* MiniQuotaDisplay removed - quota system not needed in Agregarr */}
+              {/* MiniQuotaDisplay removed - quota system not needed in Posterarr */}
             </div>
             <div className="p-1">
               <Menu.Item>

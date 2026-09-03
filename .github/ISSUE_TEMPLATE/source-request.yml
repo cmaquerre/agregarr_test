@@ -5,7 +5,7 @@ body:
   - type: markdown
     attributes:
       value: |
-        Thanks for suggesting a new list source for Agregarr!
+        Thanks for suggesting a new list source for Posterarr!
 
   - type: input
     id: source-name

@@ -118,7 +118,7 @@ export function cleanOverseerrLabels(filterStr: string): string {
             // Split by comma to get individual labels
             const labels = valuesStr.split(',');
 
-            // Filter out Agregarr user/owner labels only
+            // Filter out Posterarr user/owner labels only
             const nonAgregarrLabels = labels.filter(
               (label) => !label.toLowerCase().startsWith('agregarr')
             );
@@ -128,7 +128,7 @@ export function cleanOverseerrLabels(filterStr: string): string {
               return `label!=${nonAgregarrLabels.join(',')}`;
             }
 
-            return ''; // All labels were Agregarr labels
+            return ''; // All labels were Posterarr labels
           })
           .filter((part) => part !== ''); // Remove empty parts
 
@@ -149,7 +149,7 @@ export function cleanOverseerrLabels(filterStr: string): string {
  * Clean Agregarr-specific labels from collection label arrays
  * Preserves user's custom labels while removing auto-generated ones
  * @param existingLabels Array of current labels on the collection
- * @param preserveLabel Optional specific Agregarr label to preserve during cleaning
+ * @param preserveLabel Optional specific Posterarr label to preserve during cleaning
  */
 export function cleanAgregarrCollectionLabels(
   existingLabels: string[],
@@ -157,12 +157,12 @@ export function cleanAgregarrCollectionLabels(
 ): string[] {
   if (!existingLabels || existingLabels.length === 0) return [];
 
-  // Filter out Agregarr labels, but preserve the specified label if provided
+  // Filter out Posterarr labels, but preserve the specified label if provided
   return existingLabels.filter((label: string) => {
     const isAgregarrLabel = label.toLowerCase().startsWith('agregarr');
     if (!isAgregarrLabel) return true; // Keep non-Agregarr labels
     if (preserveLabel && label === preserveLabel) return true; // Keep specified label
-    return false; // Remove other Agregarr labels
+    return false; // Remove other Posterarr labels
   });
 }
 
@@ -229,7 +229,7 @@ export async function cleanupOrphanedCollections(
       for (const collection of libraryCollections) {
         // Check if collection has user-specific labels
         if (collection.labels && collection.labels.length > 0) {
-          // Look for Agregarr user-specific labels
+          // Look for Posterarr user-specific labels
           const agregarrUserLabels = collection.labels.filter(
             (label: string) =>
               label.toLowerCase().startsWith('agregarr') &&
@@ -318,11 +318,11 @@ export function createCollectionLabel(
 }
 
 /**
- * Parse collection config ID from Agregarr label
+ * Parse collection config ID from Posterarr label
  * Returns the config ID if the label matches our pattern, otherwise null
  */
 export function parseConfigIdFromLabel(label: string): string | null {
-  // Match pattern: Agregarr[Source][ConfigId] or Agregarr[Source][ConfigId]user[UserId]
+  // Match pattern: Posterarr[Source][ConfigId] or Posterarr[Source][ConfigId]user[UserId]
   // Source can contain hyphens/underscores (e.g., multi-source, filtered_hub)
   // ConfigId starts with a digit (numeric ID or UUID)
   const match = label.match(
@@ -499,13 +499,13 @@ export function findCollectionByConfigId(
     // Single match found
     const matchingCollection = matchingCollections[0];
 
-    // Check if this collection has Agregarr labels (indicates it was managed by us)
+    // Check if this collection has Posterarr labels (indicates it was managed by us)
     const hasAgregarrLabels = matchingCollection.labels?.some((label) => {
       const labelText = typeof label === 'string' ? label : label.tag;
       return labelText.toLowerCase().startsWith('agregarr');
     });
 
-    // Only proceed if it has Agregarr labels (safety check to avoid matching unrelated collections)
+    // Only proceed if it has Posterarr labels (safety check to avoid matching unrelated collections)
     if (hasAgregarrLabels) {
       return true;
     } else {
@@ -517,7 +517,7 @@ export function findCollectionByConfigId(
 }
 
 /**
- * Sync config IDs and rating keys between Agregarr settings and Plex collections
+ * Sync config IDs and rating keys between Posterarr settings and Plex collections
  * Fixes out-of-sync collections by pushing our config IDs to Plex labels and updating our rating keys
  */
 export async function syncConfigsWithPlexCollections(
@@ -626,7 +626,7 @@ export async function syncConfigsWithPlexCollections(
             return false;
           }
 
-          // Must have Agregarr labels (safety check - consistent with discovery)
+          // Must have Posterarr labels (safety check - consistent with discovery)
           const hasAgregarrLabels = collection.labels?.some((label) => {
             const labelText = typeof label === 'string' ? label : label.tag;
             return labelText.toLowerCase().startsWith('agregarr');
@@ -696,18 +696,18 @@ export async function syncConfigsWithPlexCollections(
         continue;
       }
 
-      // Check if this collection has an Agregarr label already (safety check)
+      // Check if this collection has an Posterarr label already (safety check)
       const existingAgregarrLabels =
         matchingCollection.labels?.filter((label) => {
           const labelText = typeof label === 'string' ? label : label.tag;
           return labelText.toLowerCase().startsWith('agregarr');
         }) || [];
 
-      // Safety check: Only sync collections that already have Agregarr labels
+      // Safety check: Only sync collections that already have Posterarr labels
       // This prevents accidentally taking over unrelated user collections
       if (existingAgregarrLabels.length === 0) {
         logger.debug(
-          `Skipping collection "${matchingCollection.title}" - no existing Agregarr labels found (safety check)`,
+          `Skipping collection "${matchingCollection.title}" - no existing Posterarr labels found (safety check)`,
           {
             label: 'Collection Config Sync',
             configId: config.id,
@@ -733,7 +733,7 @@ export async function syncConfigsWithPlexCollections(
       );
 
       // Update Plex collection with our config ID label
-      // addLabelToCollection automatically cleans existing Agregarr labels and replaces with new one
+      // addLabelToCollection automatically cleans existing Posterarr labels and replaces with new one
       await plexClient.addLabelToCollection(
         matchingCollection.ratingKey,
         correctLabel

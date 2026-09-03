@@ -1,5 +1,5 @@
 services:
-  agregarr:
+  posterarr:
     build:
       context: .
       dockerfile: Dockerfile

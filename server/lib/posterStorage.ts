@@ -516,7 +516,7 @@ export async function downloadAndSavePoster(
       timeout: 30000,
       maxContentLength: MAX_FILE_SIZE,
       headers: {
-        'User-Agent': 'Agregarr/1.0.0',
+        'User-Agent': 'Posterarr/1.0.0',
       },
     });
 

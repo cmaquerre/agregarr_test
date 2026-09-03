@@ -23,7 +23,7 @@ const messages: { [messageName: string]: MessageDescriptor } = defineMessages({
   jobsandcache: 'Jobs',
   jobs: 'Jobs',
   jobsDescription:
-    'Agregarr performs Collections Sync as regularly-scheduled job, but can also be manually triggered below.',
+    'Posterarr performs Collections Sync as regularly-scheduled job, but can also be manually triggered below.',
   jobname: 'Job Name',
   jobtype: 'Type',
   nextexecution: 'Next Execution',
@@ -35,7 +35,7 @@ const messages: { [messageName: string]: MessageDescriptor } = defineMessages({
   command: 'Command',
   cache: 'Cache',
   cacheDescription:
-    'Agregarr caches requests to external API endpoints to optimize performance and avoid making unnecessary API calls.',
+    'Posterarr caches requests to external API endpoints to optimize performance and avoid making unnecessary API calls.',
   cacheflushed: '{cachename} cache flushed.',
   cachename: 'Cache Name',
   cachehits: 'Hits',
@@ -71,7 +71,7 @@ const messages: { [messageName: string]: MessageDescriptor } = defineMessages({
   editJobScheduleCustomCronInvalid: 'Invalid CRON expression',
   imagecache: 'Image Cache',
   imagecacheDescription:
-    'When enabled in settings, Agregarr will proxy and cache images from pre-configured external sources. Cached images are saved into your config folder. You can find the files in <code>{appDataPath}/cache/images</code>.',
+    'When enabled in settings, Posterarr will proxy and cache images from pre-configured external sources. Cached images are saved into your config folder. You can find the files in <code>{appDataPath}/cache/images</code>.',
   imagecachecount: 'Images Cached',
   imagecachesize: 'Total Cache Size',
   toastCollectionsSyncSkipped:

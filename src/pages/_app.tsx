@@ -1,8 +1,8 @@
 import Layout from '@app/components/Layout';
 import LoadingBar from '@app/components/LoadingBar';
-// PWAHeader removed - PWA functionality not needed in Agregarr
-// ServiceWorkerSetup removed - PWA functionality not needed in Agregarr
-// StatusChecker removed - not needed in Agregarr
+// PWAHeader removed - PWA functionality not needed in Posterarr
+// ServiceWorkerSetup removed - PWA functionality not needed in Posterarr
+// StatusChecker removed - not needed in Posterarr
 import Toast from '@app/components/Toast';
 import ToastContainer from '@app/components/ToastContainer';
 import { InteractionProvider } from '@app/context/InteractionContext';
@@ -95,10 +95,10 @@ const CoreApp: Omit<NextAppComponentType, 'origGetInitialProps'> = ({
     loadLocaleData(currentLocale).then(setMessages);
   }, [currentLocale]);
 
-  // Permission check removed - single admin setup for Agregarr
+  // Permission check removed - single admin setup for Posterarr
   useUser();
 
-  // Badge functionality removed - not needed in Agregarr desktop app
+  // Badge functionality removed - not needed in Posterarr desktop app
 
   if (router.pathname.match(/(login|setup|resetpassword)/)) {
     component = <Component {...pageProps} />;
@@ -135,10 +135,10 @@ const CoreApp: Omit<NextAppComponentType, 'origGetInitialProps'> = ({
                     name="viewport"
                     content="initial-scale=1, viewport-fit=cover, width=device-width"
                   ></meta>
-                  {/* PWAHeader removed - PWA functionality not needed in Agregarr */}
+                  {/* PWAHeader removed - PWA functionality not needed in Posterarr */}
                 </Head>
-                {/* StatusChecker removed - not needed in Agregarr */}
-                {/* ServiceWorkerSetup removed - PWA functionality not needed in Agregarr */}
+                {/* StatusChecker removed - not needed in Posterarr */}
+                {/* ServiceWorkerSetup removed - PWA functionality not needed in Posterarr */}
                 <UserContext initialUser={user}>{component}</UserContext>
               </ToastProvider>
             </InteractionProvider>

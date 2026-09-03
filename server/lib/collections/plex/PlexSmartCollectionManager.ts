@@ -23,7 +23,7 @@ class PlexSmartCollectionManager {
    * @param labelName - Label name to filter by (e.g., "agregarr-collection-123")
    * @param mediaType - 'movie' or 'tv'
    * @param sortOption - Sort parameter (e.g., 'titleSort', 'year:desc')
-   * @param agregarrLabel - Agregarr management label to add to the smart collection
+   * @param agregarrLabel - Posterarr management label to add to the smart collection
    * @param maxItems - Maximum number of items to include in the smart collection
    * @returns The rating key of the created smart collection or null if failed
    */
@@ -117,7 +117,7 @@ class PlexSmartCollectionManager {
       // Step 2: Set the collection to be filtered by user (per-user watch status)
       await this.setCollectionUserFilter(smartCollectionRatingKey);
 
-      // Step 3: Add Agregarr management label so it's not discovered as pre-existing
+      // Step 3: Add Posterarr management label so it's not discovered as pre-existing
       if (agregarrLabel) {
         await this.plexApi.addLabelToCollection(
           smartCollectionRatingKey,

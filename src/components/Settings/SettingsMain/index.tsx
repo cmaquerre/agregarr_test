@@ -28,7 +28,7 @@ const messages = defineMessages({
   general: 'General',
   generalsettings: 'General Settings',
   generalsettingsDescription:
-    'Configure global and default settings for Agregarr.',
+    'Configure global and default settings for Posterarr.',
   apikey: 'API Key',
   applicationTitle: 'Application Title',
   applicationurl: 'Application URL',
@@ -42,7 +42,7 @@ const messages = defineMessages({
     'Do NOT enable this setting unless you understand what you are doing!',
   trustProxy: 'Enable Proxy Support',
   trustProxyTip:
-    'Allow Agregarr to correctly register client IP addresses behind a proxy',
+    'Allow Posterarr to correctly register client IP addresses behind a proxy',
   validationApplicationTitle: 'You must provide an application title',
   validationApplicationUrl: 'You must provide a valid URL',
   validationApplicationUrlTrailingSlash: 'URL must not end in a trailing slash',
@@ -54,13 +54,13 @@ const messages = defineMessages({
     'Cache TMDB posters for 7 days to reduce API calls and improve performance (recommended)',
   resetAgregarr: 'Reset',
   resetAgregarrDescription:
-    'Remove all Agregarr collections from Plex and clear all user labels.',
+    'Remove all Posterarr collections from Plex and clear all user labels.',
   resetButton: 'Reset Collections',
   resetButtonConfirm: 'Are you sure?',
   resetWarning:
-    'This action will delete all collections created by Agregarr from your Plex server and clear all Agregarr user labels.',
+    'This action will delete all collections created by Posterarr from your Plex server and clear all Posterarr user labels.',
   resetting: 'Resetting...',
-  toastResetSuccess: 'All Agregarr collections have been removed successfully!',
+  toastResetSuccess: 'All Posterarr collections have been removed successfully!',
   toastResetFailure: 'Something went wrong while resetting collections.',
 });
 

@@ -12,7 +12,7 @@ const PostersCollectionsPage: React.FC = () => {
   const intl = useIntl();
   const pageTitle = `${intl.formatMessage(
     messages.collectionPosters
-  )} - Agregarr`;
+  )} - Posterarr`;
 
   return (
     <>

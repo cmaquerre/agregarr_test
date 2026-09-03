@@ -42,7 +42,7 @@ export const SVGElement: React.FC<SVGElementComponentProps> = ({
     props.iconType === 'source-logo'
       ? previewCollectionConfig?.type
         ? `/services/${previewCollectionConfig.type}.svg`
-        : '/services/os_icon.svg' // Agregarr logo as placeholder
+        : '/services/os_icon.svg' // Posterarr logo as placeholder
       : props.iconPath || '';
 
   // Load SVG as image

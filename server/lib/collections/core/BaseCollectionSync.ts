@@ -1824,7 +1824,7 @@ export abstract class BaseCollectionSync<TSource extends CollectionSource>
         }
       );
 
-      // FALLBACK: Check for orphaned agregarr collection with matching title
+      // FALLBACK: Check for orphaned posterarr collection with matching title
       if (config?.name) {
         for (let i = 0; i < metadataResults.length; i++) {
           const result = metadataResults[i];
@@ -1833,7 +1833,7 @@ export abstract class BaseCollectionSync<TSource extends CollectionSource>
             const collection = result.value.collection;
             const labels = result.value.labels;
 
-            // Check if this is an orphaned agregarr collection with matching title
+            // Check if this is an orphaned posterarr collection with matching title
             const hasAgregarrLabel = labels.some((label: string) =>
               label.toLowerCase().startsWith('agregarr')
             );

@@ -28,7 +28,7 @@ dashboardRoutes.get('/stats', isAuthenticated(), async (req, res) => {
         const agregarrCollectionKeys: string[] = [];
         const preExistingCollectionKeys: string[] = [];
 
-        // Include user-created Agregarr collections
+        // Include user-created Posterarr collections
         if (settings.plex.collectionConfigs) {
           for (const config of settings.plex.collectionConfigs) {
             if (config.collectionRatingKey) {
@@ -147,7 +147,7 @@ dashboardRoutes.get('/stats', isAuthenticated(), async (req, res) => {
 
     const dashboardData = {
       collections: {
-        agregarr: agregarrCollectionCount,
+        posterarr: agregarrCollectionCount,
         preExisting: preExistingCollectionCount,
         total: agregarrCollectionCount + preExistingCollectionCount,
         stats: collectionStatsData,
@@ -191,7 +191,7 @@ dashboardRoutes.get('/collections', isAuthenticated(), async (req, res) => {
     // Get rating keys from our configured collections
     const collectionRatingKeys: string[] = [];
 
-    // Extract rating keys from user-created Agregarr collections
+    // Extract rating keys from user-created Posterarr collections
     if (settings.plex.collectionConfigs) {
       for (const config of settings.plex.collectionConfigs) {
         if (config.collectionRatingKey) {

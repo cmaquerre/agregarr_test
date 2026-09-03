@@ -202,7 +202,7 @@ authRoutes.post('/plex', async (req, res, next) => {
   }
 });
 
-// Local authentication removed - Agregarr uses Plex-only authentication
+// Local authentication removed - Posterarr uses Plex-only authentication
 
 authRoutes.post('/logout', (req, res, next) => {
   req.session?.destroy((err) => {
@@ -217,6 +217,6 @@ authRoutes.post('/logout', (req, res, next) => {
   });
 });
 
-// Password reset routes removed - Agregarr uses Plex-only authentication
+// Password reset routes removed - Posterarr uses Plex-only authentication
 
 export default authRoutes;

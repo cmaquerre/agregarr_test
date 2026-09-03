@@ -118,12 +118,12 @@ export const DEFAULT_SOURCE_COLORS: Record<string, SourceColorScheme> = {
     textColor: '#ffffff',
   },
   'multi-source': {
-    primaryColor: '#e65100', // Agregarr orange/brand color
+    primaryColor: '#e65100', // Posterarr orange/brand color
     secondaryColor: '#1c1917', // Matches UI bg-stone-900
     textColor: '#ffffff',
   },
   comingsoon: {
-    primaryColor: '#e65100', // Agregarr orange/brand color
+    primaryColor: '#e65100', // Posterarr orange/brand color
     secondaryColor: '#1c1917', // Matches UI bg-stone-900
     textColor: '#ffffff',
   },
@@ -138,7 +138,7 @@ export const DEFAULT_SOURCE_COLORS: Record<string, SourceColorScheme> = {
     textColor: '#ffffff',
   },
   default: {
-    primaryColor: '#e65100', // Agregarr orange/brand color (fallback for unknown sources)
+    primaryColor: '#e65100', // Posterarr orange/brand color (fallback for unknown sources)
     secondaryColor: '#1c1917', // Matches UI bg-stone-900
     textColor: '#ffffff',
   },

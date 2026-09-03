@@ -1329,7 +1329,7 @@ router.get('/collection-posters/:id', async (req, res, next) => {
         libraryId = config.libraryId;
       }
     } else {
-      // Agregarr collection - lookup by ID in settings
+      // Posterarr collection - lookup by ID in settings
       const settings = getSettings();
       const collectionConfig = settings.plex.collectionConfigs?.find(
         (c) => c.id === id

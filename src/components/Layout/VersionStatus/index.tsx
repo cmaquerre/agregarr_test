@@ -10,8 +10,8 @@ import { defineMessages, useIntl } from 'react-intl';
 import useSWR from 'swr';
 
 const messages = defineMessages({
-  streamdevelop: 'Agregarr Develop',
-  streamstable: 'Agregarr Stable',
+  streamdevelop: 'Posterarr Develop',
+  streamstable: 'Posterarr Stable',
   outofdate: 'Out of Date',
   commitsbehind:
     '{commitsBehind} {commitsBehind, plural, one {commit} other {commits}} behind',

@@ -52,7 +52,7 @@ const messages = defineMessages({
   tags: 'Tags',
   tagRequests: 'Automatic Tag Mode',
   tagRequestsInfo:
-    'Choose how Agregarr tags Radarr downloads (tags are created if they do not exist).',
+    'Choose how Posterarr tags Radarr downloads (tags are created if they do not exist).',
   tagModeOff: 'Do not add automatic tags',
   tagModeSingle: 'Single tag (agregarr)',
   tagModePerService: 'Per service tags (trakt-agregarr, tmdb-agregarr)',

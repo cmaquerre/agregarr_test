@@ -1747,7 +1747,7 @@ export class HubSyncService {
       return true;
     }
 
-    // For Agregarr collections, calculate based on current state and visibility
+    // For Posterarr collections, calculate based on current state and visibility
     if ('type' in config) {
       // This is a CollectionConfig
       const collectionConfig = config as CollectionConfig;

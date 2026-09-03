@@ -41,7 +41,7 @@ const messages = defineMessages({
   sonarrInstructions:
     'In Sonarr → Settings → Connect → Add Webhook. Set the URL above and enable On Download and On Upgrade events.',
   plexInstructions:
-    'In Plex → Settings → Webhooks → Add Webhook. Set the URL to your Agregarr server base URL: {baseUrl}/plex-webhook',
+    'In Plex → Settings → Webhooks → Add Webhook. Set the URL to your Posterarr server base URL: {baseUrl}/plex-webhook',
 });
 
 interface TriggerConfig {

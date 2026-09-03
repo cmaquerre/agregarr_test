@@ -263,7 +263,7 @@ router.post('/test', async (req, res, next) => {
 
 /**
  * Create a tag on a Radarr server using credentials from Overseerr
- * This allows tag creation even when Radarr isn't configured locally in Agregarr
+ * This allows tag creation even when Radarr isn't configured locally in Posterarr
  */
 router.post('/radarr/:serverId/tags', async (req, res, next) => {
   try {
@@ -337,7 +337,7 @@ router.post('/radarr/:serverId/tags', async (req, res, next) => {
 
 /**
  * Create a tag on a Sonarr server using credentials from Overseerr
- * This allows tag creation even when Sonarr isn't configured locally in Agregarr
+ * This allows tag creation even when Sonarr isn't configured locally in Posterarr
  */
 router.post('/sonarr/:serverId/tags', async (req, res, next) => {
   try {

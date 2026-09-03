@@ -140,8 +140,8 @@ const SERVICE_LOGO_MAP: Record<string, string> = {
   anilist: 'anilist.svg',
   myanimelist: 'myanimelist.svg',
   plex: 'plex.svg',
-  'multi-source': 'os_icon.svg', // Use Agregarr icon for multi-source collections
-  comingsoon: 'os_icon.svg', // Use Agregarr icon for coming soon collections
+  'multi-source': 'os_icon.svg', // Use Posterarr icon for multi-source collections
+  comingsoon: 'os_icon.svg', // Use Posterarr icon for coming soon collections
   radarrtag: 'radarr.svg', // Radarr tag collections use Radarr logo
   sonarrtag: 'sonarr.svg', // Sonarr tag collections use Sonarr logo
   // Streaming Platform Logo Mappings
@@ -372,7 +372,7 @@ async function downloadImageAsBase64(
           responseType: 'arraybuffer',
           timeout: 10000, // 10 second timeout
           headers: {
-            'User-Agent': 'Agregarr/1.0',
+            'User-Agent': 'Posterarr/1.0',
           },
         });
         buffer = Buffer.from(response.data);
@@ -450,9 +450,9 @@ async function loadServiceLogo(serviceType: string): Promise<string | null> {
     const logoFilename = SERVICE_LOGO_MAP[serviceType.toLowerCase()];
     if (!logoFilename) {
       logger.debug(
-        `No logo mapping found for service type: ${serviceType}, using Agregarr logo as fallback`
+        `No logo mapping found for service type: ${serviceType}, using Posterarr logo as fallback`
       );
-      // Fallback to Agregarr logo for unknown source types
+      // Fallback to Posterarr logo for unknown source types
       const fallbackLogoPath = path.join(LOGOS_PATH, 'os_icon.svg');
       if (fs.existsSync(fallbackLogoPath)) {
         const svgContent = await fs.promises.readFile(fallbackLogoPath, 'utf8');

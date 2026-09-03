@@ -3,7 +3,7 @@ import cacheManager from '@server/lib/cache';
 import logger from '@server/logger';
 
 /**
- * IMDb Rating Response from Agregarr API
+ * IMDb Rating Response from Posterarr API
  */
 export interface ImdbRatingResponse {
   imdbId: string;
@@ -12,7 +12,7 @@ export interface ImdbRatingResponse {
 }
 
 /**
- * IMDb Ratings API client for fetching ratings from Agregarr's IMDb proxy
+ * IMDb Ratings API client for fetching ratings from Posterarr's IMDb proxy
  *
  * This API supports both Movies and TV Shows.
  * API Documentation: https://api.agregarr.org

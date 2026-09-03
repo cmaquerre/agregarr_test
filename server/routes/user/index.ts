@@ -6,7 +6,7 @@ import { Router } from 'express';
 
 const userRoutes = Router();
 
-// Simplified user routes for Agregarr - removed Overseerr user management features
+// Simplified user routes for Posterarr - removed Overseerr user management features
 // Focus on basic Plex authentication and user info
 
 userRoutes.get('/', isAuthenticated(), async (req, res) => {
@@ -111,7 +111,7 @@ userRoutes.post(
 
 // Stub out other endpoints that were removed
 userRoutes.get('/:id/quota', isAuthenticated(), async (req, res) => {
-  // Quota system removed for Agregarr
+  // Quota system removed for Posterarr
   return res.status(200).json({
     movie: { remaining: 0, limit: 0, days: 0 },
     tv: { remaining: 0, limit: 0, days: 0 },
@@ -119,7 +119,7 @@ userRoutes.get('/:id/quota', isAuthenticated(), async (req, res) => {
 });
 
 userRoutes.get('/:id/requests', isAuthenticated(), async (req, res) => {
-  // Request system removed for Agregarr
+  // Request system removed for Posterarr
   return res.status(200).json({
     pageInfo: { pages: 1, pageSize: 20, results: 0, page: 1 },
     results: [],
@@ -127,7 +127,7 @@ userRoutes.get('/:id/requests', isAuthenticated(), async (req, res) => {
 });
 
 userRoutes.get('/:id/watchdata', isAuthenticated(), async (req, res) => {
-  // Watch data simplified for Agregarr
+  // Watch data simplified for Posterarr
   return res.status(200).json({
     recentlyWatched: [],
     playCount: 0,

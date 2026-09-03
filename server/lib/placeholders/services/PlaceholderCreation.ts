@@ -1163,7 +1163,7 @@ async function createPlaceholders(
             if (libraryPath) {
               // Extract relative path from Plex path by taking last N parts
               // This works regardless of path separators (Windows \ vs Linux /)
-              // and handles cases where Plex runs on different OS than Agregarr
+              // and handles cases where Plex runs on different OS than Posterarr
               const pathParts = placeholderPath.split(/[/\\]/).filter((p) => p);
 
               let relativePath = '';

@@ -329,7 +329,7 @@ router.post('/poster-template', (req, res) => {
 
       if (version && version !== '2.0') {
         return res.status(400).json({
-          error: `Unsupported template version: ${version}. This version of Agregarr only supports version 2.0 (ZIP format).`,
+          error: `Unsupported template version: ${version}. This version of Posterarr only supports version 2.0 (ZIP format).`,
         });
       }
 
@@ -672,7 +672,7 @@ router.post('/overlay-template', (req, res) => {
 
       if (version && version !== '1.0') {
         return res.status(400).json({
-          error: `Unsupported overlay template version: ${version}. This version of Agregarr only supports version 1.0.`,
+          error: `Unsupported overlay template version: ${version}. This version of Posterarr only supports version 1.0.`,
         });
       }
 

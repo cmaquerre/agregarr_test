@@ -109,7 +109,7 @@ export interface CollectionConfig {
   readonly libraryName: string; // Library name for display
   readonly sortOrderHome?: number; // Order for Plex home screen (1+ for positioned items, 0 for void/unpositioned)
   readonly sortOrderLibrary?: number; // Order for Plex library tab (0 for A-Z section, 1+ for promoted section)
-  readonly isLibraryPromoted?: boolean; // true = promoted section (uses exclamation marks), false = A-Z section (defaults to true for Agregarr collections)
+  readonly isLibraryPromoted?: boolean; // true = promoted section (uses exclamation marks), false = A-Z section (defaults to true for Posterarr collections)
   readonly randomizeHomeOrder?: boolean; // If true, randomize position amongst other randomized items on home screen
   readonly isLinked?: boolean; // True if collection is actively linked to other collections
   readonly linkId?: number; // Group ID for linked collections (preserved even when isLinked=false)
@@ -397,7 +397,7 @@ export interface PlexHubConfig {
 }
 
 /**
- * Configuration for pre-existing Plex collections (not created by Agregarr)
+ * Configuration for pre-existing Plex collections (not created by Posterarr)
  */
 export interface PreExistingCollectionConfig {
   id: string; // Generated unique identifier
@@ -610,7 +610,7 @@ export interface WatchlistSyncSettings {
   lastSyncError?: string; // Last sync error message
 }
 
-// Quota interface removed - request system not needed in Agregarr
+// Quota interface removed - request system not needed in Posterarr
 
 export interface WebhookTriggerConfig {
   enabled: boolean;
@@ -684,9 +684,9 @@ interface FullPublicSettings extends PublicSettings {
   newPlexLogin: boolean;
 }
 
-// Notification system removed - not needed in Agregarr collections management
+// Notification system removed - not needed in Posterarr collections management
 
-// Notification agents and settings removed - not needed in Agregarr
+// Notification agents and settings removed - not needed in Posterarr
 
 interface JobSettings {
   schedule: string;
@@ -748,7 +748,7 @@ class Settings {
       clientId: randomUUID(),
       main: {
         apiKey: '',
-        applicationTitle: 'Agregarr',
+        applicationTitle: 'Posterarr',
         applicationUrl: '',
         csrfProtection: false,
         localLogin: false,
@@ -1100,7 +1100,7 @@ class Settings {
     };
   }
 
-  // Notification methods removed - not needed in Agregarr
+  // Notification methods removed - not needed in Posterarr
 
   get jobs(): Record<JobId, JobSettings> {
     return this.data.jobs;
@@ -1165,7 +1165,7 @@ class Settings {
     this.data.mediaFolders = data;
   }
 
-  // VAPID keys methods removed - push notifications not needed in Agregarr
+  // VAPID keys methods removed - push notifications not needed in Posterarr
 
   public regenerateApiKey(): MainSettings {
     this.main.apiKey = this.generateApiKey();
@@ -1177,7 +1177,7 @@ class Settings {
     return Buffer.from(`${Date.now()}${randomUUID()}`).toString('base64');
   }
 
-  // generateVapidKeys method removed - push notifications not needed in Agregarr
+  // generateVapidKeys method removed - push notifications not needed in Posterarr
 
   /**
    * Settings Load
