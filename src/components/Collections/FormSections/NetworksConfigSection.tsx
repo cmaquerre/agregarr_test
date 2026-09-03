@@ -1,6 +1,7 @@
 import type { CollectionFormConfig } from '@app/types/collections';
 import { Field, type FormikErrors, type FormikTouched } from 'formik';
 import type React from 'react';
+import { useState } from 'react';
 import { defineMessages, useIntl } from 'react-intl';
 import useSWR from 'swr';
 
@@ -24,6 +25,13 @@ const messages = defineMessages({
   global: 'Global',
   loadCountriesError: 'Failed to load countries. Please try again.',
   loadPlatformsError: 'Failed to load platforms. Please try again.',
+  importListTitle: 'Radarr / Sonarr Import List URLs',
+  importListDescription:
+    'Copy these URLs into Radarr or Sonarr as a "Custom List" import source to automatically download top 10 items.',
+  importListMovies: 'Movies (Radarr)',
+  importListTv: 'TV Shows (Sonarr)',
+  copied: 'Copied!',
+  copyUrl: 'Copy URL',
 });
 
 interface NetworksConfigSectionProps {
@@ -47,6 +55,31 @@ const NetworksConfigSection = ({
   getTemplatePresets,
 }: NetworksConfigSectionProps) => {
   const intl = useIntl();
+  const [copiedMovie, setCopiedMovie] = useState(false);
+  const [copiedTv, setCopiedTv] = useState(false);
+
+  const buildImportUrl = (mediaType: 'movie' | 'tv') => {
+    const origin =
+      typeof window !== 'undefined' ? window.location.origin : '';
+    const params = new URLSearchParams({
+      platform: values.subtype || '',
+      country: values.networksCountry || 'global',
+      mediaType,
+    });
+    return `${origin}/api/v1/lists/flixpatrol?${params.toString()}`;
+  };
+
+  const handleCopy = (mediaType: 'movie' | 'tv') => {
+    navigator.clipboard.writeText(buildImportUrl(mediaType)).then(() => {
+      if (mediaType === 'movie') {
+        setCopiedMovie(true);
+        setTimeout(() => setCopiedMovie(false), 2000);
+      } else {
+        setCopiedTv(true);
+        setTimeout(() => setCopiedTv(false), 2000);
+      }
+    });
+  };
 
   // Fetch available countries
   const { data: countries, error: countriesError } = useSWR<
@@ -187,6 +220,66 @@ const NetworksConfigSection = ({
               {intl.formatMessage(messages.loadPlatformsError)}
             </p>
           )}
+        </div>
+      )}
+
+      {/* Import List URLs — shown when platform is selected */}
+      {values.networksCountry && values.subtype && (
+        <div className="rounded-md border border-stone-600 bg-stone-800 p-4">
+          <h4 className="mb-1 text-sm font-medium text-gray-200">
+            {intl.formatMessage(messages.importListTitle)}
+          </h4>
+          <p className="mb-3 text-xs text-gray-400">
+            {intl.formatMessage(messages.importListDescription)}
+          </p>
+
+          {/* Movies / Radarr */}
+          <div className="mb-3">
+            <label className="mb-1 block text-xs text-gray-400">
+              {intl.formatMessage(messages.importListMovies)}
+            </label>
+            <div className="flex items-center gap-2">
+              <input
+                readOnly
+                value={buildImportUrl('movie')}
+                className="flex-1 truncate rounded-md border border-stone-500 bg-stone-700 px-2 py-1.5 text-xs text-gray-300 focus:outline-none"
+                onClick={(e) => (e.target as HTMLInputElement).select()}
+              />
+              <button
+                type="button"
+                onClick={() => handleCopy('movie')}
+                className="shrink-0 rounded-md border border-stone-500 bg-stone-700 px-2 py-1.5 text-xs text-gray-300 hover:bg-stone-600"
+              >
+                {copiedMovie
+                  ? intl.formatMessage(messages.copied)
+                  : intl.formatMessage(messages.copyUrl)}
+              </button>
+            </div>
+          </div>
+
+          {/* TV Shows / Sonarr */}
+          <div>
+            <label className="mb-1 block text-xs text-gray-400">
+              {intl.formatMessage(messages.importListTv)}
+            </label>
+            <div className="flex items-center gap-2">
+              <input
+                readOnly
+                value={buildImportUrl('tv')}
+                className="flex-1 truncate rounded-md border border-stone-500 bg-stone-700 px-2 py-1.5 text-xs text-gray-300 focus:outline-none"
+                onClick={(e) => (e.target as HTMLInputElement).select()}
+              />
+              <button
+                type="button"
+                onClick={() => handleCopy('tv')}
+                className="shrink-0 rounded-md border border-stone-500 bg-stone-700 px-2 py-1.5 text-xs text-gray-300 hover:bg-stone-600"
+              >
+                {copiedTv
+                  ? intl.formatMessage(messages.copied)
+                  : intl.formatMessage(messages.copyUrl)}
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>

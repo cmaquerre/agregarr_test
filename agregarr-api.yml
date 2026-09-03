@@ -6476,6 +6476,59 @@ paths:
                     type: number
                   restartRequired:
                     type: boolean
+  /lists/flixpatrol:
+    get:
+      summary: Get a Radarr/Sonarr-compatible import list from FlixPatrol top 10
+      description: >
+        Returns items from a FlixPatrol streaming platform top 10 list in a
+        format compatible with Radarr (mediaType=movie) or Sonarr (mediaType=tv)
+        custom import lists. No authentication required so Radarr/Sonarr can
+        poll this endpoint directly.
+      security: []
+      tags:
+        - public
+      parameters:
+        - in: query
+          name: platform
+          required: false
+          schema:
+            type: string
+            default: netflix_top_10
+          description: >
+            Platform identifier (e.g. netflix_top_10, hbo_top_10,
+            disney_top_10, amazon_top_10, apple-tv_top_10)
+        - in: query
+          name: country
+          required: false
+          schema:
+            type: string
+            default: global
+          description: Country code (e.g. france, united-states, global)
+        - in: query
+          name: mediaType
+          required: false
+          schema:
+            type: string
+            enum: [movie, tv]
+            default: movie
+          description: >
+            "movie" returns [{tmdbId, title, year}] for Radarr.
+            "tv" returns [{tvdbId, tmdbId, title, year}] for Sonarr.
+      responses:
+        '200':
+          description: List of items in Radarr or Sonarr import list format
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+        '400':
+          description: Invalid mediaType parameter
+          content:
+            application/json:
+              schema:
+                type: object
   /status/appdata:
     get:
       summary: Get application data volume status
@@ -11295,6 +11348,54 @@ paths:
       responses:
         '200':
           description: Tagging result
+          content:
+            application/json:
+              schema:
+                type: object
+  /settings/language-tagger/search:
+    get:
+      summary: Search Plex items by title for language tagger
+      tags:
+        - settings-general
+      parameters:
+        - in: query
+          name: q
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Search results
+          content:
+            application/json:
+              schema:
+                type: object
+        '400':
+          description: Query too short
+          content:
+            application/json:
+              schema:
+                type: object
+        '503':
+          description: Plex not configured
+          content:
+            application/json:
+              schema:
+                type: object
+  /settings/language-tagger/scan-item:
+    post:
+      summary: Rescan language tag for a single Plex item
+      tags:
+        - settings-general
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        '200':
+          description: Scan result
           content:
             application/json:
               schema:
