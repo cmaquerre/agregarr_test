@@ -1595,6 +1595,131 @@ settingsRoutes.post('/language-tagger/run', async (req, res, next) => {
   }
 });
 
+// Search Plex items by title (for language tagger per-item rescan)
+settingsRoutes.get('/language-tagger/search', async (req, res, next) => {
+  try {
+    const { q } = req.query as { q?: string };
+    if (!q || q.trim().length < 2) {
+      return res.status(400).json({ message: 'Query must be at least 2 characters' });
+    }
+
+    const { languageTaggerService } = await import(
+      '@server/lib/languageTagger/LanguageTaggerService'
+    );
+    const plexApi = await languageTaggerService.getPlexApi();
+    if (!plexApi) {
+      return res.status(503).json({ message: 'Plex not configured' });
+    }
+
+    const settings = getSettings();
+    const libraries = (settings.plex.libraries ?? []) as Array<{
+      key: string;
+      name: string;
+      type: string;
+    }>;
+
+    const { getRepository: getRepo } = await import('@server/datasource');
+    const { LanguageTagRecord } = await import('@server/entity/LanguageTagRecord');
+
+    const results: Array<{
+      ratingKey: string;
+      title: string;
+      year?: number;
+      mediaType: 'movie' | 'show';
+      libraryId: string;
+      libraryName: string;
+      currentTag?: string;
+    }> = [];
+
+    for (const library of libraries) {
+      if (library.type !== 'movie' && library.type !== 'show') continue;
+      const type = library.type === 'movie' ? 1 : 2;
+      try {
+        const response = await (
+          plexApi as unknown as {
+            plexClient: { query: <T>(path: string) => Promise<T> };
+          }
+        ).plexClient.query<{
+          MediaContainer: {
+            Metadata?: Array<{ ratingKey: string; title: string; year?: number }>;
+          };
+        }>(
+          `/library/sections/${library.key}/all?type=${type}&title=${encodeURIComponent(q.trim())}&limit=5`
+        );
+
+        for (const item of response?.MediaContainer?.Metadata ?? []) {
+          const tagRecord = await getRepo(LanguageTagRecord).findOne({
+            where: { ratingKey: item.ratingKey },
+          });
+          results.push({
+            ratingKey: item.ratingKey,
+            title: item.title,
+            year: item.year,
+            mediaType: library.type as 'movie' | 'show',
+            libraryId: library.key,
+            libraryName: library.name,
+            currentTag: tagRecord?.tag,
+          });
+        }
+      } catch {
+        // Skip inaccessible libraries
+      }
+    }
+
+    return res.status(200).json({ results: results.slice(0, 20) });
+  } catch (e) {
+    return next(e);
+  }
+});
+
+// Rescan language tag for a single Plex item
+settingsRoutes.post('/language-tagger/scan-item', async (req, res, next) => {
+  try {
+    const { ratingKey, mediaType } = req.body as {
+      ratingKey?: string;
+      mediaType?: 'movie' | 'show';
+    };
+
+    if (!ratingKey || !mediaType) {
+      return res.status(400).json({ message: 'ratingKey and mediaType are required' });
+    }
+
+    const { languageTaggerService } = await import(
+      '@server/lib/languageTagger/LanguageTaggerService'
+    );
+    const plexApi = await languageTaggerService.getPlexApi();
+    if (!plexApi) {
+      return res.status(503).json({ message: 'Plex not configured' });
+    }
+
+    const metadata = await plexApi.getMetadata(ratingKey);
+    if (!metadata) {
+      return res.status(404).json({ message: 'Item not found in Plex' });
+    }
+
+    const tmdbGuid = metadata.Guid?.find((g) => g.id.startsWith('tmdb://'));
+    const tmdbId = tmdbGuid
+      ? parseInt(tmdbGuid.id.replace('tmdb://', ''), 10)
+      : 0;
+
+    if (mediaType === 'movie') {
+      await languageTaggerService.tagMovie(ratingKey, metadata.title, tmdbId, plexApi);
+    } else {
+      await languageTaggerService.tagShow(ratingKey, metadata.title, tmdbId, plexApi);
+    }
+
+    const { getRepository: getRepo } = await import('@server/datasource');
+    const { LanguageTagRecord } = await import('@server/entity/LanguageTagRecord');
+    const record = await getRepo(LanguageTagRecord).findOne({
+      where: { ratingKey },
+    });
+
+    return res.status(200).json({ tag: record?.tag ?? null, title: metadata.title });
+  } catch (e) {
+    return next(e);
+  }
+});
+
 // Media folder path mappings
 settingsRoutes.get('/media-folders', (req, res) => {
   const settings = getSettings();

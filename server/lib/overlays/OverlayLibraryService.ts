@@ -961,6 +961,19 @@ class OverlayLibraryService {
             plexPosterMissing: false,
             basePosterSourceChanged: false,
           });
+          // Even when the show poster is unchanged, still check seasons —
+          // a new season may have been added since the last run.
+          if (applyToSeasons && item.type === 'show' && tmdbId) {
+            await this.applyOverlaysToShowSeasons(
+              plexApi,
+              item,
+              context,
+              templates,
+              libraryId,
+              tmdbId,
+              forceResync
+            );
+          }
           return; // Skip this item - no need to download poster
         }
 
