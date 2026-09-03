@@ -156,6 +156,23 @@ export const startJobs = (): void => {
   });
 
   scheduledJobs.push({
+    id: 'language-tagger',
+    name: 'Language Tagger',
+    type: 'process',
+    interval: 'fixed',
+    cronSchedule: jobs['language-tagger'].schedule,
+    job: schedule.scheduleJob(jobs['language-tagger'].schedule, async () => {
+      logger.info('Starting scheduled job: Language Tagger', {
+        label: 'Jobs',
+      });
+      const { languageTaggerService } = await import(
+        '@server/lib/languageTagger/LanguageTaggerService'
+      );
+      languageTaggerService.runAllLibraryTagging();
+    }),
+  });
+
+  scheduledJobs.push({
     id: 'watchlist-sync',
     name: 'Plex Watchlist Sync',
     type: 'process',

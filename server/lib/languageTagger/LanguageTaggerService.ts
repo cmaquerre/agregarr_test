@@ -390,22 +390,25 @@ class LanguageTaggerService {
   async runLibraryTagging(
     plexApi: PlexAPI,
     libraryId: string,
-    mediaType: 'movie' | 'show'
+    mediaType: 'movie' | 'show',
+    clearFirst = true
   ): Promise<TaggingResult> {
-    // Clear existing records for this media type (and season records for shows)
-    // so stale entries from previous scans don't linger.
-    const repo = getRepository(LanguageTagRecord);
-    const typesToClear = mediaType === 'show' ? ['show', 'season'] : ['movie'];
-    await repo
-      .createQueryBuilder()
-      .delete()
-      .where('mediaType IN (:...types)', { types: typesToClear })
-      .execute();
-    logger.info('LanguageTagger: cleared records before scan', {
-      label: 'LanguageTagger',
-      mediaType,
-      typesToClear,
-    });
+    if (clearFirst) {
+      // Clear existing records for this media type (and season records for shows)
+      // so stale entries from previous scans don't linger.
+      const repo = getRepository(LanguageTagRecord);
+      const typesToClear = mediaType === 'show' ? ['show', 'season'] : ['movie'];
+      await repo
+        .createQueryBuilder()
+        .delete()
+        .where('mediaType IN (:...types)', { types: typesToClear })
+        .execute();
+      logger.info('LanguageTagger: cleared records before scan', {
+        label: 'LanguageTagger',
+        mediaType,
+        typesToClear,
+      });
+    }
 
     const result: TaggingResult = { tagged: 0, skipped: 0, errors: 0, items: [] };
     let offset = 0;
@@ -477,6 +480,78 @@ class LanguageTaggerService {
     });
 
     return result;
+  }
+
+  /**
+   * Tag all overlay-configured libraries. Called by the scheduled job.
+   * Clears all records once at the start then processes each library without
+   * clearing between runs so multi-library setups accumulate correctly.
+   */
+  async runAllLibraryTagging(): Promise<void> {
+    const settings = getSettings();
+    if (!settings.languageTagger?.enabled) {
+      logger.info('LanguageTagger: tagger not enabled, skipping scheduled run', {
+        label: 'LanguageTagger',
+      });
+      return;
+    }
+
+    const plexApi = await this.getPlexApi();
+    if (!plexApi) {
+      logger.warn('LanguageTagger: Plex not configured, skipping scheduled run', {
+        label: 'LanguageTagger',
+      });
+      return;
+    }
+
+    const { getRepository: getRepo } = await import('@server/datasource');
+    const { OverlayLibraryConfig } = await import('@server/entity/OverlayLibraryConfig');
+    const configs = await getRepo(OverlayLibraryConfig).find();
+
+    if (configs.length === 0) {
+      logger.info('LanguageTagger: no overlay libraries configured, skipping scheduled run', {
+        label: 'LanguageTagger',
+      });
+      return;
+    }
+
+    logger.info('LanguageTagger: starting scheduled library tagging', {
+      label: 'LanguageTagger',
+      libraryCount: configs.length,
+    });
+
+    // Clear all records once before the full sweep
+    await this.clearRecords();
+
+    let totalTagged = 0;
+    let totalErrors = 0;
+
+    for (const config of configs) {
+      try {
+        const result = await this.runLibraryTagging(
+          plexApi,
+          config.libraryId,
+          config.mediaType,
+          false // already cleared above
+        );
+        totalTagged += result.tagged;
+        totalErrors += result.errors;
+      } catch (error) {
+        logger.error('LanguageTagger: failed to tag library', {
+          label: 'LanguageTagger',
+          libraryId: config.libraryId,
+          libraryName: config.libraryName,
+          error: error instanceof Error ? error.message : String(error),
+        });
+        totalErrors++;
+      }
+    }
+
+    logger.info('LanguageTagger: scheduled tagging complete', {
+      label: 'LanguageTagger',
+      totalTagged,
+      totalErrors,
+    });
   }
 
   async clearRecords(): Promise<{ deleted: number }> {
