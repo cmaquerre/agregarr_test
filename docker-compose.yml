@@ -1,12 +1,17 @@
-version: '3'
 services:
   agregarr:
     build:
       context: .
-      dockerfile: Dockerfile.local
+      dockerfile: Dockerfile
     ports:
-      - 7171:7171
+      - 7173:7171
+    environment:
+      - CONFIG_DIRECTORY=/app/config
     volumes:
-      - .:/app:rw,cached
-      - /app/node_modules
-      - /app/.next
+      - /opt/Arr/agregarr_test:/app/config
+      # Mount your media folders (read-only).
+      # Then configure the path mappings in Settings > Media Folders.
+      # Format: /host/path:/container/path:ro
+      # - /your/movies/folder:/media/movies:ro
+      # - /your/series/folder:/media/series:ro
+    restart: unless-stopped
