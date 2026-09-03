@@ -1,76 +1,178 @@
 # Agregarr
 
-Agregarr keeps your Plex Home and Recommended fresh by frequently updating it with Collections from various sources, including Trakt, IMDb, TMDB, Letterboxd, MDBList, FlixPatrol (Networks Top 10), AniList and MyAnimeList, as well as generated Collections from Tautulli Statistics, and Overseerr Requests. It has various options for downloading missing media, including as requests through Overseerr, or directly through Radarr/Sonarr. Collections can be reordered on the Home/Recommended and Library tabs independently, and can have time periods or days set for their visibility in Plex.
+Agregarr garde votre écran d'accueil Plex ("Home" / "Recommended") à jour en générant automatiquement des Collections à partir de sources externes (Trakt, IMDb, TMDB, Letterboxd, MDBList, FlixPatrol, AniList, MyAnimeList), de vos statistiques Tautulli, ou de vos demandes Overseerr. Il peut aussi télécharger automatiquement les médias manquants via Radarr/Sonarr/Overseerr, générer des affiches (overlays) personnalisées, et — sur ce fork — détecter et afficher la langue disponible (VF/VOSTFR) sur les affiches.
 
-## Features
+## Sommaire
 
-- **Public Lists**: Add public lists from Trakt, IMDb, TMDB, Letterboxd, MDBList, FlixPatrol (Networks Top 10), AniList and MyAnimeList, with presets and custom list options.
-- **Grab Missing Items**: Missing items from lists can be added via Radarr/Sonarr or Overseerr, with various filters available including release year, season count, list position, genre, and origin country
-- **Coming Soon**: Create Coming Soon Collections based off monitored content in Radarr/Sonarr, or anticipated releases from Trakt, complete with trailers and poster overlays.
-- **Overseerr Requests**: Generate Collections either for each users requests (only visible to that user), or for All Requests
-- **Tautulli Statistics**: Generate Collections based on the Most Popular content on your server
-- **Independent Reordering**: Control the order in which Collections appear across the Home/Recommended screens and the Library tab independently
-- **Keeps Plex Updated**: Collections will be be updated on every sync (default 12 hours, custom scheduling available). Custom sync options available per-collection.
-- **Randomise Home Order**: Keep your home screen dynamic by rotating the order in which collections appear (separate scheduling available)
-- **Template System**: Easily set collection names with flexible templating and title importing from lists.
-- **Time Restrictions**: Schedule collections to be active only during specific time periods
-- **Existing Collection Integration**: Any pre-existing Collections in Plex and Default Hubs (Recently Added etc) can be managed alongside Agregarr Collections
-- **Collection Statistics**: Dashboard showing Most Popular Collections (from Tautulli), and recently added Missing Items
-- **Poster Templates**: Create your own Poster Templates which can be dynamically filled with content per-collection
-- **Preview Collections**: Preview the collection and its matching/missing items, and add them individually via Radarr/Sonarr or Overseerr, or add items to the global exclusions list.
+- [Fonctionnalités](#fonctionnalités)
+- [Installation](#installation)
+  - [Option A — Image pré-construite (recommandé)](#option-a--image-pré-construite-recommandé)
+  - [Option B — Build depuis les sources](#option-b--build-depuis-les-sources)
+  - [Variables d'environnement importantes](#variables-denvironnement-importantes)
+  - [Persistance des données](#persistance-des-données)
+- [Premier lancement](#premier-lancement)
+- [Configuration](#configuration)
+  - [Connexion à Plex](#connexion-à-plex)
+  - [Sources de listes](#sources-de-listes)
+  - [Intégrations Radarr / Sonarr / Overseerr / Tautulli](#intégrations-radarr--sonarr--overseerr--tautulli)
+  - [Language Tagger (VF / VOSTFR)](#language-tagger-vf--vostfr)
+  - [Webhooks — mise à jour des affiches en temps réel](#webhooks--mise-à-jour-des-affiches-en-temps-réel)
+  - [Dossiers média et Coming Soon](#dossiers-média-et-coming-soon)
+  - [Tâches planifiées (Jobs)](#tâches-planifiées-jobs)
+- [Dépannage rapide](#dépannage-rapide)
+- [Licence et crédits](#licence-et-crédits)
+
+## Fonctionnalités
+
+- **Listes publiques** : Trakt, IMDb, TMDB, Letterboxd, MDBList, FlixPatrol (Top 10 par plateforme), AniList, MyAnimeList — avec préréglages et options personnalisées.
+- **Récupération des médias manquants** : via Radarr/Sonarr ou Overseerr, avec filtres (année, nombre de saisons, position dans la liste, genre, pays d'origine).
+- **Coming Soon** : collections basées sur le contenu surveillé dans Radarr/Sonarr ou les sorties à venir sur Trakt, avec bandes-annonces et affiches dédiées.
+- **Demandes Overseerr** : collections par utilisateur ou globales.
+- **Statistiques Tautulli** : collections basées sur le contenu le plus populaire de votre serveur.
+- **Réorganisation indépendante** de l'ordre des collections sur Home/Recommended et sur l'onglet Bibliothèque.
+- **Mise à jour automatique** de Plex à chaque synchronisation (toutes les 12h par défaut, planification personnalisable).
+- **Ordre aléatoire** de l'écran d'accueil (planification séparée).
+- **Système de templates** pour les noms de collections et l'import de titres depuis les listes.
+- **Restrictions temporelles** : collections actives uniquement sur certaines périodes/jours.
+- **Affiches personnalisées** (Poster Templates) et overlays dynamiques.
+- **Language Tagger (spécifique à ce fork)** : détecte automatiquement si un fichier est en VF, VOSTFR, ou multi-langue et l'affiche sur le poster.
+- **Webhooks temps réel (spécifique à ce fork)** : Radarr/Sonarr/Plex peuvent notifier Agregarr immédiatement après un téléchargement ou un remplacement de fichier (upgrade), pour régénérer l'affiche sans attendre le prochain cycle planifié.
 
 <img width="1902" height="983" alt="agregarr-promo" src="https://github.com/user-attachments/assets/1b744502-30ce-4988-93fc-4588e1207e69" />
 
 ## Installation
 
-### Docker Compose
+Agregarr fonctionne en conteneur Docker. Deux méthodes possibles.
+
+### Option A — Image pré-construite (recommandé)
+
+L'image est construite automatiquement par la CI GitHub Actions de ce dépôt (`.github/workflows/build-fork.yml`) et publiée sur GHCR.
 
 ```yaml
 services:
   agregarr:
-    image: agregarr/agregarr:latest
+    image: ghcr.io/cmaquerre/agregarr_test:develop
+    pull_policy: always
     container_name: agregarr
-    volumes:
-      - /path/to/config:/app/config # Change /path/to/config to your actual config path
-      # Linux/Mac: - /mnt/serverdata/configs/agregarr:/app/config
-      # Windows:   - C:\serverdata\configs\agregarr:/app/config
-
-      # Optional: For Coming Soon/Placeholder feature
-      - /path/to/placeholder/movies:/data/movies
-      - /path/to/placeholder/tv:/data/tv
-      # Linux/Mac:
-      # - /mnt/media/movie-placeholders:/data/movies
-      # - /mnt/media/tv-placeholders:/data/tv
-      # Windows:
-      # - E:\media\movie-placeholders:/data/movies
-      # - E:\media\tv-placeholders:/data/tv
-
-      # And then select your root folders in Settings -> Downloads
-    environment:
-      - TZ=Pacific/Auckland # Set to your local timezone for accurate poster overlay release dates/countdowns - see 'TZ Identifier' column here https://en.wikipedia.org/wiki/List_of_tz_database_time_zones
     ports:
-      - 7171:7171
+      - 7173:7171
+    environment:
+      - CONFIG_DIRECTORY=/app/config
+      - TZ=Europe/Paris # Ajustez à votre fuseau horaire pour des dates d'affiche correctes
+    volumes:
+      - /path/to/config:/app/config # Remplacez par votre chemin réel
+
+      # Optionnel : dossiers média en lecture seule pour la fonctionnalité Coming Soon/Placeholder
+      # - /path/to/movies:/data/movies:ro
+      # - /path/to/tv:/data/tv:ro
     restart: unless-stopped
 ```
 
-Further instructions for basic setup available [**here**](https://agregarr.org/docs/installation) and Placeholder media volumes [**here**](https://agregarr.org/docs/placeholder-volumes)
+### Option B — Build depuis les sources
 
-The application will be available at `http://localhost:7171`
+C'est la configuration actuellement présente dans `docker-compose.yml` de ce dépôt — utile si vous développez ou modifiez le code localement.
 
-> **Note**: Your volume must be set correctly for the your settings to persist. If Agregarr is reset after restart, it is because your volume is not set correctly. The Coming Soon/Placeholder feature requires media volumes to be mounted, these folders should be added to Plex, but not added to Radarr/Sonarr. Without media mounts, Agregarr can run remotely and all other features will work normally.
+```yaml
+services:
+  agregarr:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - 7173:7171
+    environment:
+      - CONFIG_DIRECTORY=/app/config
+    volumes:
+      - /path/to/config:/app/config
+      # Montez vos dossiers média en lecture seule, puis configurez le
+      # mapping des chemins dans Settings > Media Folders.
+      # Format : /chemin/hôte:/chemin/conteneur:ro
+      # - /your/movies/folder:/media/movies:ro
+      # - /your/series/folder:/media/series:ro
+    restart: unless-stopped
+```
 
-## License
+Lancez ensuite :
 
-GPL-3.0 License - see [LICENSE](LICENSE) file for details.
+```bash
+docker compose up -d
+```
 
-## Credits
+L'application est accessible sur `http://localhost:7173` (ou le port choisi).
 
-Originally built off [**Overseerr**](https://github.com/sct/Overseerr)
+### Variables d'environnement importantes
 
-Inspired by [Kometa](https://github.com/Kometa-Team/Kometa)
+| Variable | Rôle |
+|---|---|
+| `CONFIG_DIRECTORY` | Chemin **dans le conteneur** où Agregarr lit/écrit `settings.json` et ses autres données persistantes. Doit correspondre à la cible du volume monté. |
+| `TZ` | Fuseau horaire, utilisé pour calculer les dates/compte-à-rebours affichés sur les overlays. |
 
-Code references for Coming Soon feature from [UMTK](https://github.com/netplexflix/Upcoming-Movies-TV-Shows-for-Kometa)
+### Persistance des données
 
-Anime ID mappings file by [PlexAniBridge](https://github.com/eliasbenb/PlexAniBridge)
+> **Important** : si `CONFIG_DIRECTORY` n'est pas défini, Agregarr écrit ses réglages à un chemin par défaut à l'intérieur du conteneur (non monté), qui **sera perdu** au prochain redémarrage/rebuild du conteneur. Définissez toujours `CONFIG_DIRECTORY` **et** montez le même chemin en volume, comme dans les exemples ci-dessus.
+>
+> Si après un redémarrage vos réglages semblent réinitialisés, la cause la plus fréquente est un volume mal configuré (chemin différent, volume anonyme au lieu d'un bind mount, ou changement de `CONFIG_DIRECTORY` entre deux versions de votre `docker-compose.yml`).
 
-A massive thanks to the developers and contributors of these projects!
+## Premier lancement
+
+Au premier démarrage, un assistant de configuration (Setup) vous guide pour :
+
+1. Vous connecter à votre compte Plex (OAuth).
+2. Sélectionner votre serveur Plex et les bibliothèques à gérer.
+3. Choisir les bibliothèques sur lesquelles Agregarr pourra créer des collections.
+
+## Configuration
+
+Tous les réglages se trouvent dans **Settings**, accessible depuis le menu principal.
+
+### Connexion à Plex
+
+**Settings → Plex** : URL/port du serveur, bibliothèques gérées.
+
+### Sources de listes
+
+**Settings → Sources** : ajoutez vos clés API/tokens pour Trakt, TMDB, MDBList, etc., puis créez des collections depuis **Collections → Nouvelle collection** en choisissant une source et une liste publique ou personnelle.
+
+### Intégrations Radarr / Sonarr / Overseerr / Tautulli
+
+**Settings → Downloads** : connectez vos instances Radarr/Sonarr (URL + clé API) pour permettre la récupération automatique des médias manquants, et Overseerr/Tautulli pour les collections basées sur les demandes ou les statistiques.
+
+### Language Tagger (VF / VOSTFR)
+
+**Settings → Language Tagger** : active la détection automatique de la langue disponible sur chaque fichier (analyse des pistes audio via ffprobe) et son affichage sur le poster (badge VF/VOSTFR/Multi).
+
+- Une tâche planifiée re-scanne la bibliothèque une fois par jour (voir [Tâches planifiées](#tâches-planifiées-jobs)).
+- Pour une mise à jour **immédiate** après un remplacement de fichier par Radarr/Sonarr (ex. VOSTFR remplacé par une VF), activez aussi les **Webhooks** ci-dessous — sans ça, l'affiche ne se met à jour qu'au prochain scan planifié.
+
+### Webhooks — mise à jour des affiches en temps réel
+
+**Settings → Webhooks** permet de déclencher la mise à jour d'une affiche dès qu'un fichier est téléchargé ou remplacé, sans attendre les tâches planifiées.
+
+1. Dans **Settings → Webhooks**, activez les intégrations souhaitées (**Radarr**, **Sonarr**, **Plex**) et notez l'URL de webhook affichée pour chacune (elle contient un token secret).
+2. Dans **Radarr → Settings → Connect → Add → Webhook** : collez l'URL Radarr, cochez au minimum **On Download** et **On Upgrade** (ajoutez **On Grab** si souhaité), sauvegardez.
+3. Répétez l'étape 2 dans **Sonarr → Settings → Connect → Add → Webhook** avec l'URL Sonarr.
+4. Optionnel : **Plex → Settings → Webhooks → Add Webhook** avec l'URL Plex — utile pour les tout nouveaux ajouts à la bibliothèque, mais ne couvre **pas** le remplacement d'un fichier déjà présent (VOSTFR → VF par exemple) : pour ce cas précis, seuls les webhooks Radarr/Sonarr fonctionnent.
+
+Un délai (par défaut 5 minutes pour Radarr/Sonarr, 0 pour Plex) est appliqué avant traitement, le temps que Plex réindexe le fichier — réglable dans la même page.
+
+> Vérification rapide : après une régénération, si l'affiche ne bouge pas, contrôlez d'abord que le webhook correspondant est bien **activé côté Agregarr** ET **configuré côté Radarr/Sonarr** — les deux moitiés sont nécessaires, l'une sans l'autre ne fait rien.
+
+### Dossiers média et Coming Soon
+
+Pour la fonctionnalité Coming Soon/Placeholder, montez vos dossiers média en lecture seule (voir exemples Docker Compose ci-dessus), puis configurez le mapping des chemins dans **Settings → Media Folders**. Ces dossiers doivent être ajoutés à Plex mais **pas** à Radarr/Sonarr.
+
+### Tâches planifiées (Jobs)
+
+**Settings → Jobs** liste toutes les tâches automatiques (synchronisation des collections, application des overlays, language tagger, etc.), leur fréquence (modifiable), et permet de les lancer manuellement.
+
+## Dépannage rapide
+
+- **Les réglages ne persistent pas après un redémarrage** → vérifiez `CONFIG_DIRECTORY` et le volume monté (voir [Persistance des données](#persistance-des-données)).
+- **L'affiche ne se met pas à jour après un retéléchargement Radarr/Sonarr** → vérifiez que le webhook est activé des deux côtés (Agregarr **et** Radarr/Sonarr), voir [Webhooks](#webhooks--mise-à-jour-des-affiches-en-temps-réel).
+- **Logs** : consultables dans **Settings → Logs** ou dans le dossier monté (`<config>/logs`).
+
+## Licence et crédits
+
+Licence GPL-3.0 — voir [LICENSE](LICENSE).
+
+Basé à l'origine sur [Overseerr](https://github.com/sct/Overseerr), inspiré de [Kometa](https://github.com/Kometa-Team/Kometa). Fonctionnalité Coming Soon inspirée de [UMTK](https://github.com/netplexflix/Upcoming-Movies-TV-Shows-for-Kometa). Fichier de correspondance des ID Anime par [PlexAniBridge](https://github.com/eliasbenb/PlexAniBridge).
