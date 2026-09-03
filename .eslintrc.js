@@ -42,6 +42,10 @@ module.exports = {
       'error',
       { allowSameFolder: true },
     ],
+    'max-lines': [
+      'warn',
+      { max: 600, skipBlankLines: true, skipComments: true },
+    ],
   },
   overrides: [
     {

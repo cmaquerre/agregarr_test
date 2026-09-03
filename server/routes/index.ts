@@ -15,6 +15,7 @@ import { appDataPath, appDataStatus } from '@server/utils/appDataVolume';
 import { getAppVersion, getCommitTag } from '@server/utils/appVersion';
 import restartFlag from '@server/utils/restartFlag';
 import { isPerson } from '@server/utils/typeHelpers';
+import type { NextFunction, Request, RequestHandler, Response } from 'express';
 import { Router } from 'express';
 import anilistRoutes from './anilist';
 import authRoutes from './auth';
@@ -26,6 +27,7 @@ import exclusionsRoutes from './exclusions';
 import filesystemRoutes from './filesystem';
 import fontsRoutes from './fonts';
 import hubsRoutes from './hubs';
+import listsRoutes from './lists';
 import mediaRoutes from './media';
 import missingItemsRoutes from './missing-items';
 import myanimelistRoutes from './myanimelist';
@@ -34,28 +36,54 @@ import overlayMappingsRoutes from './overlayMappings';
 import overlaySettingsRoutes from './overlaySettings';
 import overlayTemplatesRoutes from './overlayTemplates';
 import overlayTestRoutes from './overlayTest';
+import overseerrRoutes from './overseerr';
 import postersRoutes from './posters';
 import preExistingRoutes from './preexisting';
 import ratingsRoutes from './ratings';
 import reorderRoutes from './reorder';
 import searchRoutes from './search';
+import serviceRoutes from './service';
 import sourceColorsRoutes from './sourceColors';
 import traktOAuthRoutes from './trakt-oauth';
 import uploadsRoutes from './uploads';
-
-// Import createTmdbWithRegionLanguage function directly from discover (inline)
-
-export const createTmdbWithRegionLanguage = async (): Promise<TheMovieDb> => {
-  return new TheMovieDb({ originalLanguage: await getTmdbLanguage() });
-};
-// Movie, search, and TV routes removed - discovery functionality not needed
-import overseerrRoutes from './overseerr';
-import serviceRoutes from './service';
 import user from './user';
+
+// Movie, search, and TV routes removed - discovery functionality not needed
 
 const router = Router();
 
 router.use(checkUser);
+
+/**
+ * Wraps a TMDB-backed route handler: creates the TMDB client for the
+ * request's language, and turns any thrown error into a logged 500 via
+ * `next`. Call `next(...)` directly from the handler for a different
+ * status (e.g. a 400 validation error).
+ */
+const withTmdb = (
+  debugMessage: string,
+  clientMessage: string,
+  handler: (
+    tmdb: TheMovieDb,
+    req: Request,
+    res: Response,
+    next: NextFunction
+  ) => Promise<Response | void>
+): RequestHandler => {
+  return async (req, res, next) => {
+    const tmdb = new TheMovieDb({ originalLanguage: await getTmdbLanguage() });
+    try {
+      return await handler(tmdb, req, res, next);
+    } catch (e) {
+      logger.debug(debugMessage, {
+        label: 'API',
+        errorMessage: e instanceof Error ? e.message : String(e),
+        params: req.params,
+      });
+      return next({ status: 500, message: clientMessage });
+    }
+  };
+};
 
 router.get('/status', async (_req, res) => {
   const githubApi = new GithubAPI();
@@ -145,6 +173,8 @@ router.get('/settings/public', async (req, res) => {
 // Pushover notification route removed - notification system not needed
 // Public Trakt OAuth endpoints (no auth required for OAuth callback flow)
 router.use('/trakt', traktOAuthRoutes);
+// Public import list endpoints (no auth required so Radarr/Sonarr can poll)
+router.use('/lists', listsRoutes);
 router.use('/settings', isAuthenticated(), settingsRoutes);
 router.use('/dashboard', isAuthenticated(), dashboardRoutes);
 router.use('/filesystem', isAuthenticated(), filesystemRoutes);
@@ -179,587 +209,444 @@ router.use('/anilist', isAuthenticated(), anilistRoutes);
 router.use('/myanimelist', isAuthenticated(), myanimelistRoutes);
 router.use('/uploads', isAuthenticated(), uploadsRoutes);
 
-router.get<{ id: string }>('/movie/:id', async (req, res, next) => {
-  const tmdb = new TheMovieDb({ originalLanguage: await getTmdbLanguage() });
+router.get(
+  '/movie/:id',
+  withTmdb(
+    'Something went wrong retrieving movie',
+    'Unable to retrieve movie.',
+    async (tmdb, req, res) => {
+      const movie = await tmdb.getMovie({ movieId: Number(req.params.id) });
+      return res.status(200).json(movie);
+    }
+  )
+);
 
-  try {
-    const movie = await tmdb.getMovie({ movieId: Number(req.params.id) });
+router.get(
+  '/discover/watch-providers/movie',
+  withTmdb(
+    'Something went wrong retrieving movie watch providers',
+    'Unable to retrieve movie watch providers.',
+    async (tmdb, req, res) => {
+      const region = req.query.region ? String(req.query.region) : 'US';
+      const providers = await tmdb.getMovieWatchProviders({
+        watchRegion: region,
+      });
+      return res.status(200).json(providers);
+    }
+  )
+);
 
-    return res.status(200).json(movie);
-  } catch (e) {
-    logger.debug('Something went wrong retrieving movie', {
-      label: 'API',
-      errorMessage: e.message,
-      movieId: req.params.id,
-    });
-    return next({
-      status: 500,
-      message: 'Unable to retrieve movie.',
-    });
-  }
-});
+router.get(
+  '/discover/watch-providers/tv',
+  withTmdb(
+    'Something went wrong retrieving TV watch providers',
+    'Unable to retrieve TV watch providers.',
+    async (tmdb, req, res) => {
+      const region = req.query.region ? String(req.query.region) : 'US';
+      const providers = await tmdb.getTvWatchProviders({
+        watchRegion: region,
+      });
+      return res.status(200).json(providers);
+    }
+  )
+);
 
-router.get('/discover/watch-providers/movie', async (req, res, next) => {
-  const tmdb = new TheMovieDb({ originalLanguage: await getTmdbLanguage() });
+router.get(
+  '/discover/genres/movie',
+  withTmdb(
+    'Something went wrong retrieving movie genres',
+    'Unable to retrieve movie genres.',
+    async (tmdb, req, res) => {
+      const language = req.query.language
+        ? String(req.query.language)
+        : 'en-US';
+      const genres = await tmdb.getMovieGenres({ language });
+      return res.status(200).json({ genres });
+    }
+  )
+);
 
-  try {
-    const region = req.query.region ? String(req.query.region) : 'US';
-    const providers = await tmdb.getMovieWatchProviders({
-      watchRegion: region,
-    });
+router.get(
+  '/discover/genres/tv',
+  withTmdb(
+    'Something went wrong retrieving TV genres',
+    'Unable to retrieve TV genres.',
+    async (tmdb, req, res) => {
+      const language = req.query.language
+        ? String(req.query.language)
+        : 'en-US';
+      const genres = await tmdb.getTvGenres({ language });
+      return res.status(200).json({ genres });
+    }
+  )
+);
 
-    return res.status(200).json(providers);
-  } catch (e) {
-    logger.debug('Something went wrong retrieving movie watch providers', {
-      label: 'API',
-      errorMessage: e.message,
-    });
-    return next({
-      status: 500,
-      message: 'Unable to retrieve movie watch providers.',
-    });
-  }
-});
+router.get(
+  '/configuration',
+  isAuthenticated(),
+  withTmdb(
+    'Something went wrong retrieving TMDB configuration',
+    'Unable to retrieve TMDB configuration.',
+    async (tmdb, _req, res) => {
+      const configuration = await tmdb.getConfiguration();
+      return res.status(200).json(configuration);
+    }
+  )
+);
 
-router.get('/discover/watch-providers/tv', async (req, res, next) => {
-  const tmdb = new TheMovieDb({ originalLanguage: await getTmdbLanguage() });
-
-  try {
-    const region = req.query.region ? String(req.query.region) : 'US';
-    const providers = await tmdb.getTvWatchProviders({ watchRegion: region });
-
-    return res.status(200).json(providers);
-  } catch (e) {
-    logger.debug('Something went wrong retrieving TV watch providers', {
-      label: 'API',
-      errorMessage: e.message,
-    });
-    return next({
-      status: 500,
-      message: 'Unable to retrieve TV watch providers.',
-    });
-  }
-});
-
-router.get('/discover/genres/movie', async (req, res, next) => {
-  const tmdb = new TheMovieDb({ originalLanguage: await getTmdbLanguage() });
-
-  try {
-    const language = req.query.language ? String(req.query.language) : 'en-US';
-    const genres = await tmdb.getMovieGenres({ language });
-
-    return res.status(200).json({ genres });
-  } catch (e) {
-    logger.debug('Something went wrong retrieving movie genres', {
-      label: 'API',
-      errorMessage: e instanceof Error ? e.message : String(e),
-    });
-    return next({
-      status: 500,
-      message: 'Unable to retrieve movie genres.',
-    });
-  }
-});
-
-router.get('/discover/genres/tv', async (req, res, next) => {
-  const tmdb = new TheMovieDb({ originalLanguage: await getTmdbLanguage() });
-
-  try {
-    const language = req.query.language ? String(req.query.language) : 'en-US';
-    const genres = await tmdb.getTvGenres({ language });
-
-    return res.status(200).json({ genres });
-  } catch (e) {
-    logger.debug('Something went wrong retrieving TV genres', {
-      label: 'API',
-      errorMessage: e instanceof Error ? e.message : String(e),
-    });
-    return next({
-      status: 500,
-      message: 'Unable to retrieve TV genres.',
-    });
-  }
-});
-
-router.get('/configuration', isAuthenticated(), async (req, res, next) => {
-  const tmdb = new TheMovieDb({ originalLanguage: await getTmdbLanguage() });
-
-  try {
-    const configuration = await tmdb.getConfiguration();
-
-    return res.status(200).json(configuration);
-  } catch (e) {
-    logger.debug('Something went wrong retrieving TMDB configuration', {
-      label: 'API',
-      errorMessage: e.message,
-    });
-    return next({
-      status: 500,
-      message: 'Unable to retrieve TMDB configuration.',
-    });
-  }
-});
-
-router.get('/countries', isAuthenticated(), async (req, res, next) => {
-  const tmdb = new TheMovieDb({ originalLanguage: await getTmdbLanguage() });
-
-  try {
-    const countries = await tmdb.getCountries();
-
-    return res.status(200).json(countries);
-  } catch (e) {
-    logger.debug('Something went wrong retrieving countries', {
-      label: 'API',
-      errorMessage: e.message,
-    });
-    return next({
-      status: 500,
-      message: 'Unable to retrieve countries.',
-    });
-  }
-});
+router.get(
+  '/countries',
+  isAuthenticated(),
+  withTmdb(
+    'Something went wrong retrieving countries',
+    'Unable to retrieve countries.',
+    async (tmdb, _req, res) => {
+      const countries = await tmdb.getCountries();
+      return res.status(200).json(countries);
+    }
+  )
+);
 
 router.get(
   '/movie-certifications',
   isAuthenticated(),
-  async (req, res, next) => {
-    const tmdb = new TheMovieDb({ originalLanguage: await getTmdbLanguage() });
-
-    try {
+  withTmdb(
+    'Something went wrong retrieving movie certifications',
+    'Unable to retrieve movie certifications.',
+    async (tmdb, _req, res) => {
       const certifications = await tmdb.getMovieCertifications();
-
       return res.status(200).json(certifications);
-    } catch (e) {
-      logger.debug('Something went wrong retrieving movie certifications', {
-        label: 'API',
-        errorMessage: e.message,
-      });
-      return next({
-        status: 500,
-        message: 'Unable to retrieve movie certifications.',
-      });
     }
-  }
+  )
 );
 
-router.get<{ id: string }>('/tv/:id', async (req, res, next) => {
-  const tmdb = new TheMovieDb({ originalLanguage: await getTmdbLanguage() });
+router.get(
+  '/tv/:id',
+  withTmdb(
+    'Something went wrong retrieving TV show',
+    'Unable to retrieve TV show.',
+    async (tmdb, req, res) => {
+      const tv = await tmdb.getTvShow({ tvId: Number(req.params.id) });
+      return res.status(200).json(tv);
+    }
+  )
+);
 
-  try {
-    const tv = await tmdb.getTvShow({ tvId: Number(req.params.id) });
+router.get(
+  '/studio/:id',
+  withTmdb(
+    'Something went wrong retrieving studio',
+    'Unable to retrieve studio.',
+    async (tmdb, req, res) => {
+      const studio = await tmdb.getStudio(Number(req.params.id));
+      return res.status(200).json(mapProductionCompany(studio));
+    }
+  )
+);
 
-    return res.status(200).json(tv);
-  } catch (e) {
-    logger.debug('Something went wrong retrieving TV show', {
-      label: 'API',
-      errorMessage: e.message,
-      tvId: req.params.id,
-    });
-    return next({
-      status: 500,
-      message: 'Unable to retrieve TV show.',
-    });
-  }
-});
+router.get(
+  '/network/:id',
+  withTmdb(
+    'Something went wrong retrieving network',
+    'Unable to retrieve network.',
+    async (tmdb, req, res) => {
+      const network = await tmdb.getNetwork(Number(req.params.id));
+      return res.status(200).json(mapNetwork(network));
+    }
+  )
+);
 
-router.get<{ id: string }>('/studio/:id', async (req, res, next) => {
-  const tmdb = new TheMovieDb({ originalLanguage: await getTmdbLanguage() });
-
-  try {
-    const studio = await tmdb.getStudio(Number(req.params.id));
-
-    return res.status(200).json(mapProductionCompany(studio));
-  } catch (e) {
-    logger.debug('Something went wrong retrieving studio', {
-      label: 'API',
-      errorMessage: e.message,
-      studioId: req.params.id,
-    });
-    return next({
-      status: 500,
-      message: 'Unable to retrieve studio.',
-    });
-  }
-});
-
-router.get<{ id: string }>('/network/:id', async (req, res, next) => {
-  const tmdb = new TheMovieDb({ originalLanguage: await getTmdbLanguage() });
-
-  try {
-    const network = await tmdb.getNetwork(Number(req.params.id));
-
-    return res.status(200).json(mapNetwork(network));
-  } catch (e) {
-    logger.debug('Something went wrong retrieving network', {
-      label: 'API',
-      errorMessage: e.message,
-      networkId: req.params.id,
-    });
-    return next({
-      status: 500,
-      message: 'Unable to retrieve network.',
-    });
-  }
-});
-
-router.get('/genres/movie', isAuthenticated(), async (req, res, next) => {
-  const tmdb = new TheMovieDb({ originalLanguage: await getTmdbLanguage() });
-
-  try {
-    const genres = await tmdb.getMovieGenres({
-      language: (req.query.language as string) ?? req.locale,
-    });
-
-    return res.status(200).json(genres);
-  } catch (e) {
-    logger.debug('Something went wrong retrieving movie genres', {
-      label: 'API',
-      errorMessage: e.message,
-    });
-    return next({
-      status: 500,
-      message: 'Unable to retrieve movie genres.',
-    });
-  }
-});
-
-router.get('/genres/tv', isAuthenticated(), async (req, res, next) => {
-  const tmdb = new TheMovieDb({ originalLanguage: await getTmdbLanguage() });
-
-  try {
-    const genres = await tmdb.getTvGenres({
-      language: (req.query.language as string) ?? req.locale,
-    });
-
-    return res.status(200).json(genres);
-  } catch (e) {
-    logger.debug('Something went wrong retrieving series genres', {
-      label: 'API',
-      errorMessage: e.message,
-    });
-    return next({
-      status: 500,
-      message: 'Unable to retrieve series genres.',
-    });
-  }
-});
-
-router.get('/genres/combined', isAuthenticated(), async (req, res, next) => {
-  const tmdb = new TheMovieDb({ originalLanguage: await getTmdbLanguage() });
-
-  try {
-    const [movieGenres, tvGenres] = await Promise.all([
-      tmdb.getMovieGenres({
+router.get(
+  '/genres/movie',
+  isAuthenticated(),
+  withTmdb(
+    'Something went wrong retrieving movie genres',
+    'Unable to retrieve movie genres.',
+    async (tmdb, req, res) => {
+      const genres = await tmdb.getMovieGenres({
         language: (req.query.language as string) ?? req.locale,
-      }),
-      tmdb.getTvGenres({
+      });
+      return res.status(200).json(genres);
+    }
+  )
+);
+
+router.get(
+  '/genres/tv',
+  isAuthenticated(),
+  withTmdb(
+    'Something went wrong retrieving series genres',
+    'Unable to retrieve series genres.',
+    async (tmdb, req, res) => {
+      const genres = await tmdb.getTvGenres({
         language: (req.query.language as string) ?? req.locale,
-      }),
-    ]);
-
-    // Merge and deduplicate by ID
-    const genreMap = new Map<number, string>();
-    movieGenres.forEach((g) => genreMap.set(g.id, g.name));
-    tvGenres.forEach((g) => genreMap.set(g.id, g.name));
-
-    const combined = Array.from(genreMap.entries())
-      .map(([id, name]) => ({ id, name }))
-      .sort((a, b) => a.name.localeCompare(b.name));
-
-    return res.status(200).json(combined);
-  } catch (e) {
-    logger.debug('Failed to retrieve combined genres', {
-      label: 'API',
-      errorMessage: e.message,
-    });
-    return next({
-      status: 500,
-      message: 'Unable to retrieve genres.',
-    });
-  }
-});
-
-router.get('/countries/combined', isAuthenticated(), async (req, res, next) => {
-  const tmdb = new TheMovieDb({ originalLanguage: await getTmdbLanguage() });
-
-  try {
-    // Fetch all countries from TMDB configuration
-    const regions = await tmdb.getRegions();
-
-    // Map TMDB region format to our format and sort by name
-    const combined = regions
-      .map((region) => ({
-        code: region.iso_3166_1,
-        name: region.english_name,
-      }))
-      .sort((a, b) => a.name.localeCompare(b.name));
-
-    return res.status(200).json(combined);
-  } catch (e) {
-    logger.debug('Failed to retrieve combined countries', {
-      label: 'API',
-      errorMessage: e.message,
-    });
-    return next({
-      status: 500,
-      message: 'Unable to retrieve countries.',
-    });
-  }
-});
-
-router.get('/languages/combined', isAuthenticated(), async (req, res, next) => {
-  const tmdb = new TheMovieDb({ originalLanguage: await getTmdbLanguage() });
-
-  try {
-    // Fetch all languages from TMDB configuration
-    const languages = await tmdb.getLanguages();
-
-    // Map TMDB language format to our format and sort by name
-    const combined = languages
-      .map((language) => ({
-        code: language.iso_639_1,
-        name: language.english_name,
-      }))
-      .sort((a, b) => a.name.localeCompare(b.name));
-
-    return res.status(200).json(combined);
-  } catch (e) {
-    logger.debug('Failed to retrieve combined languages', {
-      label: 'API',
-      errorMessage: e.message,
-    });
-    return next({
-      status: 500,
-      message: 'Unable to retrieve languages.',
-    });
-  }
-});
-
-router.get('/keywords/search', isAuthenticated(), async (req, res, next) => {
-  const tmdb = new TheMovieDb({ originalLanguage: await getTmdbLanguage() });
-
-  try {
-    const query = req.query.query as string;
-    if (!query || query.trim().length === 0) {
-      return res.status(200).json([]);
+      });
+      return res.status(200).json(genres);
     }
+  )
+);
 
-    const results = await tmdb.searchKeyword({ query: query.trim() });
+router.get(
+  '/genres/combined',
+  isAuthenticated(),
+  withTmdb(
+    'Failed to retrieve combined genres',
+    'Unable to retrieve genres.',
+    async (tmdb, req, res) => {
+      const [movieGenres, tvGenres] = await Promise.all([
+        tmdb.getMovieGenres({
+          language: (req.query.language as string) ?? req.locale,
+        }),
+        tmdb.getTvGenres({
+          language: (req.query.language as string) ?? req.locale,
+        }),
+      ]);
 
-    // Return simplified keyword objects
-    const keywords = results.results.map((keyword) => ({
-      id: keyword.id,
-      name: keyword.name,
-    }));
+      // Merge and deduplicate by ID
+      const genreMap = new Map<number, string>();
+      movieGenres.forEach((g) => genreMap.set(g.id, g.name));
+      tvGenres.forEach((g) => genreMap.set(g.id, g.name));
 
-    return res.status(200).json(keywords);
-  } catch (e) {
-    logger.debug('Something went wrong searching keywords', {
-      label: 'API',
-      errorMessage: e.message,
-    });
-    return next({
-      status: 500,
-      message: 'Unable to search keywords.',
-    });
-  }
-});
+      const combined = Array.from(genreMap.entries())
+        .map(([id, name]) => ({ id, name }))
+        .sort((a, b) => a.name.localeCompare(b.name));
 
-router.get('/keywords/batch', isAuthenticated(), async (req, res, next) => {
-  const tmdb = new TheMovieDb({ originalLanguage: await getTmdbLanguage() });
-
-  try {
-    const idsParam = req.query.ids as string;
-    if (!idsParam || idsParam.trim().length === 0) {
-      return res.status(200).json([]);
+      return res.status(200).json(combined);
     }
+  )
+);
 
-    const ids = idsParam
-      .split(',')
-      .map((id) => parseInt(id.trim(), 10))
-      .filter((id) => !isNaN(id));
+router.get(
+  '/countries/combined',
+  isAuthenticated(),
+  withTmdb(
+    'Failed to retrieve combined countries',
+    'Unable to retrieve countries.',
+    async (tmdb, _req, res) => {
+      // Fetch all countries from TMDB configuration
+      const regions = await tmdb.getRegions();
 
-    if (ids.length === 0) {
-      return res.status(200).json([]);
+      // Map TMDB region format to our format and sort by name
+      const combined = regions
+        .map((region) => ({
+          code: region.iso_3166_1,
+          name: region.english_name,
+        }))
+        .sort((a, b) => a.name.localeCompare(b.name));
+
+      return res.status(200).json(combined);
     }
+  )
+);
 
-    // Resolve keyword IDs to names in parallel
-    const keywords = await Promise.all(
-      ids.map(async (keywordId) => {
-        try {
-          const keyword = await tmdb.getKeywordDetails({ keywordId });
-          return { id: keyword.id, name: keyword.name };
-        } catch {
-          return null;
-        }
-      })
-    );
+router.get(
+  '/languages/combined',
+  isAuthenticated(),
+  withTmdb(
+    'Failed to retrieve combined languages',
+    'Unable to retrieve languages.',
+    async (tmdb, _req, res) => {
+      // Fetch all languages from TMDB configuration
+      const languages = await tmdb.getLanguages();
 
-    // Filter out failed lookups
-    return res
-      .status(200)
-      .json(keywords.filter((k): k is { id: number; name: string } => !!k));
-  } catch (e) {
-    logger.debug('Something went wrong resolving keywords', {
-      label: 'API',
-      errorMessage: e.message,
-    });
-    return next({
-      status: 500,
-      message: 'Unable to resolve keywords.',
-    });
-  }
-});
+      // Map TMDB language format to our format and sort by name
+      const combined = languages
+        .map((language) => ({
+          code: language.iso_639_1,
+          name: language.english_name,
+        }))
+        .sort((a, b) => a.name.localeCompare(b.name));
 
-router.get('/backdrops', async (req, res, next) => {
-  const tmdb = await createTmdbWithRegionLanguage();
+      return res.status(200).json(combined);
+    }
+  )
+);
 
-  try {
-    const data = (
-      await tmdb.getAllTrending({
-        page: 1,
-        timeWindow: 'week',
-      })
-    ).results.filter((result) => !isPerson(result)) as (
-      | TmdbMovieResult
-      | TmdbTvResult
-    )[];
+router.get(
+  '/keywords/search',
+  isAuthenticated(),
+  withTmdb(
+    'Something went wrong searching keywords',
+    'Unable to search keywords.',
+    async (tmdb, req, res) => {
+      const query = req.query.query as string;
+      if (!query || query.trim().length === 0) {
+        return res.status(200).json([]);
+      }
 
-    return res
-      .status(200)
-      .json(
-        data
-          .map((result) => result.backdrop_path)
-          .filter((backdropPath) => !!backdropPath)
+      const results = await tmdb.searchKeyword({ query: query.trim() });
+
+      // Return simplified keyword objects
+      const keywords = results.results.map((keyword) => ({
+        id: keyword.id,
+        name: keyword.name,
+      }));
+
+      return res.status(200).json(keywords);
+    }
+  )
+);
+
+router.get(
+  '/keywords/batch',
+  isAuthenticated(),
+  withTmdb(
+    'Something went wrong resolving keywords',
+    'Unable to resolve keywords.',
+    async (tmdb, req, res) => {
+      const idsParam = req.query.ids as string;
+      if (!idsParam || idsParam.trim().length === 0) {
+        return res.status(200).json([]);
+      }
+
+      const ids = idsParam
+        .split(',')
+        .map((id) => parseInt(id.trim(), 10))
+        .filter((id) => !isNaN(id));
+
+      if (ids.length === 0) {
+        return res.status(200).json([]);
+      }
+
+      // Resolve keyword IDs to names in parallel
+      const keywords = await Promise.all(
+        ids.map(async (keywordId) => {
+          try {
+            const keyword = await tmdb.getKeywordDetails({ keywordId });
+            return { id: keyword.id, name: keyword.name };
+          } catch {
+            return null;
+          }
+        })
       );
-  } catch (e) {
-    logger.debug('Something went wrong retrieving backdrops', {
-      label: 'API',
-      errorMessage: e.message,
-    });
-    return next({
-      status: 500,
-      message: 'Unable to retrieve backdrops.',
-    });
-  }
-});
 
-router.get('/keyword/:keywordId', async (req, res, next) => {
-  const tmdb = await createTmdbWithRegionLanguage();
-
-  try {
-    const result = await tmdb.getKeywordDetails({
-      keywordId: Number(req.params.keywordId),
-    });
-
-    return res.status(200).json(result);
-  } catch (e) {
-    logger.debug('Something went wrong retrieving keyword data', {
-      label: 'API',
-      errorMessage: e.message,
-    });
-    return next({
-      status: 500,
-      message: 'Unable to retrieve keyword data.',
-    });
-  }
-});
-
-router.get('/person/:personId', isAuthenticated(), async (req, res, next) => {
-  const tmdb = await createTmdbWithRegionLanguage();
-
-  try {
-    const personId = Number(req.params.personId);
-    if (Number.isNaN(personId)) {
-      return next({ status: 400, message: 'Invalid person ID.' });
-    }
-
-    const person = await tmdb.getPerson({
-      personId,
-      language: await getTmdbLanguage(),
-    });
-
-    return res.status(200).json({ id: person.id, name: person.name });
-  } catch (e) {
-    logger.debug('Something went wrong retrieving person data', {
-      label: 'API',
-      errorMessage: e instanceof Error ? e.message : String(e),
-    });
-    return next({ status: 500, message: 'Unable to retrieve person data.' });
-  }
-});
-
-router.get('/search/person', isAuthenticated(), async (req, res, next) => {
-  const tmdb = new TheMovieDb({ originalLanguage: await getTmdbLanguage() });
-
-  try {
-    const query = req.query.query ? String(req.query.query) : '';
-    if (!query) {
+      // Filter out failed lookups
       return res
         .status(200)
-        .json({ page: 1, results: [], total_pages: 0, total_results: 0 });
+        .json(keywords.filter((k): k is { id: number; name: string } => !!k));
     }
-    const results = await tmdb.searchPerson({ query });
-    return res.status(200).json(results);
-  } catch (e) {
-    logger.debug('Something went wrong searching for people', {
-      label: 'API',
-      errorMessage: e instanceof Error ? e.message : String(e),
-    });
-    return next({
-      status: 500,
-      message: 'Unable to search for people.',
-    });
-  }
-});
+  )
+);
 
-router.get('/search/keyword', isAuthenticated(), async (req, res, next) => {
-  const tmdb = new TheMovieDb({ originalLanguage: await getTmdbLanguage() });
+router.get(
+  '/backdrops',
+  withTmdb(
+    'Something went wrong retrieving backdrops',
+    'Unable to retrieve backdrops.',
+    async (tmdb, _req, res) => {
+      const data = (
+        await tmdb.getAllTrending({
+          page: 1,
+          timeWindow: 'week',
+        })
+      ).results.filter((result) => !isPerson(result)) as (
+        | TmdbMovieResult
+        | TmdbTvResult
+      )[];
 
-  try {
-    const query = req.query.query ? String(req.query.query) : '';
-    if (!query) {
       return res
         .status(200)
-        .json({ page: 1, results: [], total_pages: 0, total_results: 0 });
+        .json(
+          data
+            .map((result) => result.backdrop_path)
+            .filter((backdropPath) => !!backdropPath)
+        );
     }
-    const results = await tmdb.searchKeyword({ query });
-    return res.status(200).json(results);
-  } catch (e) {
-    logger.debug('Something went wrong searching for keywords', {
-      label: 'API',
-      errorMessage: e instanceof Error ? e.message : String(e),
-    });
-    return next({
-      status: 500,
-      message: 'Unable to search for keywords.',
-    });
-  }
-});
+  )
+);
 
-router.get('/search/company', isAuthenticated(), async (req, res, next) => {
-  const tmdb = new TheMovieDb({ originalLanguage: await getTmdbLanguage() });
-
-  try {
-    const query = req.query.query ? String(req.query.query) : '';
-    if (!query) {
-      return res
-        .status(200)
-        .json({ page: 1, results: [], total_pages: 0, total_results: 0 });
+router.get(
+  '/keyword/:keywordId',
+  withTmdb(
+    'Something went wrong retrieving keyword data',
+    'Unable to retrieve keyword data.',
+    async (tmdb, req, res) => {
+      const result = await tmdb.getKeywordDetails({
+        keywordId: Number(req.params.keywordId),
+      });
+      return res.status(200).json(result);
     }
-    const results = await tmdb.searchCompany({ query });
-    return res.status(200).json(results);
-  } catch (e) {
-    logger.debug('Something went wrong searching for companies', {
-      label: 'API',
-      errorMessage: e instanceof Error ? e.message : String(e),
-    });
-    return next({
-      status: 500,
-      message: 'Unable to search for companies.',
-    });
-  }
-});
+  )
+);
+
+router.get(
+  '/person/:personId',
+  isAuthenticated(),
+  withTmdb(
+    'Something went wrong retrieving person data',
+    'Unable to retrieve person data.',
+    async (tmdb, req, res, next) => {
+      const personId = Number(req.params.personId);
+      if (Number.isNaN(personId)) {
+        return next({ status: 400, message: 'Invalid person ID.' });
+      }
+
+      const person = await tmdb.getPerson({
+        personId,
+        language: await getTmdbLanguage(),
+      });
+
+      return res.status(200).json({ id: person.id, name: person.name });
+    }
+  )
+);
+
+router.get(
+  '/search/person',
+  isAuthenticated(),
+  withTmdb(
+    'Something went wrong searching for people',
+    'Unable to search for people.',
+    async (tmdb, req, res) => {
+      const query = req.query.query ? String(req.query.query) : '';
+      if (!query) {
+        return res
+          .status(200)
+          .json({ page: 1, results: [], total_pages: 0, total_results: 0 });
+      }
+      const results = await tmdb.searchPerson({ query });
+      return res.status(200).json(results);
+    }
+  )
+);
+
+router.get(
+  '/search/keyword',
+  isAuthenticated(),
+  withTmdb(
+    'Something went wrong searching for keywords',
+    'Unable to search for keywords.',
+    async (tmdb, req, res) => {
+      const query = req.query.query ? String(req.query.query) : '';
+      if (!query) {
+        return res
+          .status(200)
+          .json({ page: 1, results: [], total_pages: 0, total_results: 0 });
+      }
+      const results = await tmdb.searchKeyword({ query });
+      return res.status(200).json(results);
+    }
+  )
+);
+
+router.get(
+  '/search/company',
+  isAuthenticated(),
+  withTmdb(
+    'Something went wrong searching for companies',
+    'Unable to search for companies.',
+    async (tmdb, req, res) => {
+      const query = req.query.query ? String(req.query.query) : '';
+      if (!query) {
+        return res
+          .status(200)
+          .json({ page: 1, results: [], total_pages: 0, total_results: 0 });
+      }
+      const results = await tmdb.searchCompany({ query });
+      return res.status(200).json(results);
+    }
+  )
+);
 
 router.get('/', (_req, res) => {
   return res.status(200).json({
